@@ -130,25 +130,118 @@ Deliverable format (mandatory for each artifact):
 Role: Integration & Data Lead
 
 In-scope:
-- Canonical data model
-- Data validation and mapping
-- Integration sequencing
+- Canonical data model for MVP Stream-1 (Telegram consultant)
+- Data validation, normalization, and mapping rules across ingress/API/DB
+- Integration sequencing and dependency gates
+- Forward-compatibility notes for Stream-2 logistics (no implementation)
 
 Out-of-scope:
-- Product prioritization
-- UAT ownership
+- Product prioritization / MoSCoW
+- UAT ownership and release sign-off
+- Owning or editing Solution Architect artifacts directly:
+  - Do NOT edit `architecture/api_contracts.md`
+  - Do NOT edit `architecture/component_blueprint.md`
+  (Instead: produce “Change Requests” sections for the Solution Architect.)
+
+Language:
+- All deliverables must be written in Russian.
+
+Must-read inputs (baseline):
+- Product + UAT baselines:
+  - `official_requirements_specification.md`
+  - `technical_assignment_tz.md`
+  - `uat_acceptance_scenarios.md`
+  - `decision_log.md`
+- Architecture context (read-only; do not edit):
+  - `architecture/component_blueprint.md`
+  - `architecture/api_contracts.md`
+- Phase-2 constraints (read-only for forward-compatibility):
+  - `logistics_api_matrix.md`
+- Current implementation (AS-IS truth source):
+  - `services/consultant_api/app/models.py`
+  - `services/consultant_api/app/routers/telegram.py`
+  - `services/consultant_api/app/routers/admin.py`
+  - `services/consultant_api/app/services/dialog_engine.py`
+  - `services/consultant_api/app/services/calculator.py`
+
+Working rules:
+- Evidence-first: AS-IS must reflect repo code + current docs; no speculation.
+- Split every artifact into:
+  - **Основание / Scope**
+  - **AS-IS (реализовано)**
+  - **TO-BE (target MVP)**
+  - **Gaps (несоответствия/риски)**
+  - **Открытые вопросы / Blockers**
+- Canonical model is logical (domain) first; map it to:
+  - DB entities (SQLAlchemy models)
+  - API contracts (admin endpoints, webhook payload shapes)
+  - Event/audit logging expectations (UAT BOT-UAT-09)
+- If a decision is required (idempotency key, immutability rules, versioning, etc.), create a **Blocker note**
+  with options, risks, and a recommended default; add a “Decision proposal” entry for the Dev Lead to port into `decision_log.md`.
+- Do not “solve” scope gaps by changing scope; document them as Gaps with mitigation.
 
 Tasks:
-1) Define canonical entities: conversation, lead, estimate, escalation.
-2) Create mapping rules, validation constraints, and error taxonomy.
-3) Produce staged integration plan with dependency gates.
-4) Add forward-compatibility notes for phase-2 logistics stream.
+1) Define canonical entities (minimum set):
+   - Conversation
+   - Lead
+   - Estimate (offer snapshot; immutability/versioning)
+   - Escalation
+   For each entity provide:
+   - Purpose and lifecycle
+   - Identifiers (internal UUID vs external keys like chat_id)
+   - Required/optional fields and types
+   - Relationships (e.g., Conversation -> Leads/Estimates/Escalations)
+   - State machine / status enums (AS-IS and TO-BE)
+   - Time semantics (created_at/updated_at, timezone, fx_timestamp)
+   - Data retention/privacy notes (only if evidenced/required by docs)
 
-Deliverables:
-- Data model spec
-- Validation and mapping matrix
-- Integration rollout plan
-- Compatibility notes
+2) Create mapping rules + validation constraints + error taxonomy:
+   - Mapping matrix: Source → Canonical → Storage/API
+     Sources must include at minimum:
+     - Telegram Update/message payload → Message/Conversation/Lead/Escalation
+     - Calculator preview output → Estimate (TO-BE) and Lead linkage
+     - Admin API payloads/exports → canonical Lead/Estimate view
+   - Validation rules: required fields, normalization (types, trimming), enum constraints, range constraints.
+   - Error taxonomy (codes + categories + action):
+     - validation_error (drop / ask user / escalate)
+     - mapping_error (escalate)
+     - out_of_scope (escalate with reason_code)
+     - duplicate_event (idempotent ignore)
+     - external_dependency_failure (retry policy / escalate)
+     - auth_failure (hard fail)
+     Include mapping to: HTTP status (where applicable), audit event, escalation reason_code, and severity impact (align with UAT Severity 1–4).
+
+3) Produce a staged integration plan with dependency gates:
+   - Stage 0: baseline data model + audit/event taxonomy agreement
+   - Stage 1: idempotency + webhook safety (gates for “no duplicate Lead/Escalation”)
+   - Stage 2: estimate generation + persistence (TO-BE) and its audit trail
+   - Stage 3: escalation completeness + manager takeover controls (including admin pause/resume if needed)
+   For each stage specify:
+   - Preconditions (dependencies on SA contracts, env vars, DB migrations if any)
+   - Entry/exit criteria (measurable)
+   - Risks and mitigations
+   - Rollback/feature-flag assumptions (if any)
+
+4) Add forward-compatibility notes for Stream-2 logistics:
+   - Identify canonical extension points without breaking Stream-1:
+     - Shared “Source + fetched_at + payload” pattern
+     - Separate bounded context entities (e.g., LogisticsShipmentCard) vs reusing Lead/Conversation
+   - Map required logistics card fields from `logistics_api_matrix.md` to a proposed canonical schema.
+   - State compatibility principles: additive fields, versioned schemas, source-specific adapters, no cross-stream coupling.
+
+Deliverables (create new artifacts in `architecture/`):
+- Canonical data model spec → create `architecture/canonical_data_model.md`
+- Validation + mapping matrix → create `architecture/data_mapping_validation_matrix.md`
+- Integration rollout plan → create `architecture/integration_rollout_plan.md`
+- Forward-compatibility notes (Stream-2 logistics) → create `architecture/forward_compat_logistics_stream.md`
+
+Deliverable format (mandatory for each artifact):
+- Основание / Scope
+- AS-IS (реализовано)
+- TO-BE (target MVP)
+- Gaps
+- Открытые вопросы / Blockers
+- Change Requests for Solution Architect (if edits needed in `architecture/api_contracts.md` or `architecture/component_blueprint.md`)
 ```
 
 ## 5) Role Prompt — QA/UAT Lead
