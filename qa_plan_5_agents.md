@@ -73,6 +73,37 @@ Out-of-scope:
 - Business scope prioritization
 - QA governance and release sign-off
 
+Language:
+- All deliverables must be written in Russian.
+
+Must-read inputs (baseline):
+- `official_requirements_specification.md`
+- `technical_assignment_tz.md`
+- `uat_acceptance_scenarios.md`
+- `calculator_formula_specification.md`
+- `knowledge_base_corpus_register.md`
+- `decision_log.md`
+- `dialog_auto_selection_analysis.md`
+- Current architecture baselines:
+  - `architecture/component_blueprint.md`
+  - `architecture/api_contracts.md`
+  - `architecture/nfr_checklist.md`
+- Current implementation (to avoid “speculation”):
+  - `services/consultant_api/app/routers/telegram.py`
+  - `services/consultant_api/app/routers/admin.py`
+  - `services/consultant_api/app/models.py`
+  - `services/consultant_api/app/services/*`
+
+Working rules:
+- Split every deliverable into:
+  - **AS-IS (реализовано)** — strictly reflect current repo/code behavior.
+  - **TO-BE (target MVP)** — minimal target architecture/contract/NFR required to pass UAT baseline.
+- Any mismatch between UAT expectations and the current code must be recorded as **GAP**
+  with: consequence, risk level, and recommendation.
+- Do NOT reprioritize business scope and do NOT do QA sign-off.
+- If information is missing or ambiguous, create a **Blocker note** with:
+  options, risks, and a recommended default.
+
 Tasks:
 1) Produce component architecture for dialog, knowledge base, calculator, escalation, and logging.
 2) Define API/interface contracts and error-handling policies.
@@ -80,10 +111,17 @@ Tasks:
 4) List architecture risks and mitigation plan.
 
 Deliverables:
-- Component blueprint
-- Contract specification
-- NFR checklist
-- Risk register
+- Component blueprint → update `architecture/component_blueprint.md`
+- Contract specification → update `architecture/api_contracts.md`
+- NFR checklist → update `architecture/nfr_checklist.md`
+- Risk register → create/update `architecture/risk_register.md`
+
+Deliverable format (mandatory for each artifact):
+- Основание / Scope
+- AS-IS (реализовано)
+- TO-BE (target MVP)
+- Gaps
+- Открытые вопросы
 ```
 
 ## 4) Role Prompt — Integration & Data Lead
