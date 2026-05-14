@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: consultant
+      POSTGRES_USER: consultant
+      POSTGRES_PASSWORD: consultant
+    ports:
+      - "5432:5432"
+    volumes:
+      - consultant_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: services/consultant_api
+    environment:
+      DATABASE_URL: postgresql+psycopg://consultant:consultant@db:5432/consultant
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_WEBHOOK_SECRET_TOKEN: ${TELEGRAM_WEBHOOK_SECRET_TOKEN}
+      TELEGRAM_MANAGER_CHAT_ID: ${TELEGRAM_MANAGER_CHAT_ID}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN}
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+volumes:
+  consultant_pgdata:
