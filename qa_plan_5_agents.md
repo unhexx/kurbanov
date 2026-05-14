@@ -258,17 +258,57 @@ Out-of-scope:
 - Architecture ownership
 - Scope reprioritization
 
+Language:
+- Все артефакты и результаты — на русском.
+
+Must-read inputs (baseline):
+- `official_requirements_specification.md`
+- `technical_assignment_tz.md`
+- `uat_acceptance_scenarios.md` (включая раздел Severity)
+- `management/traceability_scheme.md`
+- `management/traceability_matrix.md`
+- `management/definitions_ready_done.md`
+- `management/backlog.md`
+- `management/go_no_go_checklist.md`
+- `management/release_notes_v1.md`
+- `decision_log.md`
+- `commercial_terms_final_cp_inputs.md` (гарантийная поддержка Severity 1/2)
+- Read-only context (при необходимости):
+  - `architecture/api_contracts.md`
+  - `architecture/nfr_checklist.md`
+
+Working rules:
+- Evidence-first: любые утверждения про AS-IS подтверждать кодом/доками; без спекуляций.
+- Traceability обязательна и должна использовать идентификаторы из `management/traceability_scheme.md`:
+  - `RS-*`, `WI-*`, `BOT-UAT-*`, `CALC-UAT-*`, `D-*`.
+- Не “владеть” архитектурой: если обнаружены разрывы контрактов/логирования/NFR — фиксировать как GAP и оформлять как QA-блокер/риск,
+  но не переписывать архитектурные артефакты по своей инициативе.
+- Не менять scope: если UAT/приемка не достижимы текущим scope — фиксировать блокер с вариантами и рекомендацией, не делать reprioritization.
+
 Tasks:
-1) Build traceability matrix: requirement -> test case -> UAT scenario.
-2) Define smoke/regression/UAT suites.
-3) Set severity, priority, and defect SLA policy.
-4) Propose release exit criteria with measurable thresholds.
+1) Build traceability matrix (detailed): Requirement (`RS-*`) → Test Case (`TC-*`) → UAT scenario (`BOT-UAT-*` / `CALC-UAT-*`) → Evidence.
+   - Базовая матрица RS→WI→UAT в `management/traceability_matrix.md` остается источником правды и не должна противоречить детализации.
+2) Define suites and quality gates:
+   - Smoke: минимальный критический набор на каждый деплой (включая критичные сценарии из `management/go_no_go_checklist.md` + базовые health checks).
+   - Regression: полный набор BOT + CALC (в рамках MVP Поток 1) + дополнительные защитные проверки при наличии регрессионных рисков.
+   - UAT: сценарии из `uat_acceptance_scenarios.md` в scope MVP Поток 1; выполнение протоколируется.
+3) Set defect policy:
+   - Severity = источник правды `uat_acceptance_scenarios.md` (Severity 1–4).
+   - Priority: по умолчанию соответствует Severity, исключения должны быть документированы (обоснование + владелец).
+   - Defect SLA: простая, severity-driven (triage/fix/verify), в рабочих днях.
+4) Propose release exit criteria (measurable) and keep consistent with `management/go_no_go_checklist.md`:
+   - UAT в scope выполнен и подписан ответственными (см. `uat_acceptance_scenarios.md`).
+   - Открытые дефекты Severity 1/2 = 0.
+   - Есть evidence по критичным сценариям (см. `management/go_no_go_checklist.md`).
+   - Перед релизом зафиксированы baseline-версии (формула/курсы/источники KB/роли) и отражены в release notes.
 
 Deliverables:
-- Traceability matrix
-- Test suite catalog
-- Defect policy
-- Go/No-Go checklist
+- Maintain: `management/traceability_matrix.md` (RS → WI → UAT, без противоречий)
+- Create: `management/qa_traceability_matrix.md` (RS → TC → UAT → Evidence/Status)
+- Create: `management/test_suite_catalog.md` (Smoke/Regression/UAT suites + когда запускать)
+- Create: `management/defect_policy.md` (Severity/priority/status flow + SLA + gate Severity 1/2 = 0 + 30 days Sev1/2 warranty note)
+- Create: `management/uat_execution_report_template.md` (шаблон протокола UAT: baseline, результаты, дефекты, подписи)
+- Maintain: `management/go_no_go_checklist.md` (Go/No-Go gate с измеримыми критериями)
 ```
 
 ## 6) Role Prompt — PMO / Delivery Manager
