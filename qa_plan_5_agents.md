@@ -445,3 +445,336 @@ Use these templates for project comments (status updates, reviews, handoffs). Do
 Рекомендация: <выбранный вариант>.
 Требуется подтверждение: <кто подтверждает и что именно>.
 ```
+
+---
+
+# Текущий статус проекта и 5 промптов для следующего цикла агентов
+
+Дата оценки: 14.05.2026.
+
+## Статус проекта
+
+### Executive summary
+- Репозиторий чистый: локальная ветка `main` синхронизирована с `origin/main`, незакоммиченных изменений на момент оценки нет.
+- Проект уже содержит рабочую структуру: baseline-документы, архитектурные артефакты, management-пакет, FastAPI-сервис `services/consultant_api`, Docker Compose и базовые unit-тесты.
+- Документация зрелая для старта исполнения: есть backlog, roadmap, traceability, Go/No-Go, QA traceability, defect policy, risk/blocker registers.
+- AS-IS реализация покрывает: Telegram webhook, secret-token validation, сбор 15 параметров, low-budget эскалацию, manager takeover через `/resume_bot`, базовые сущности БД, admin endpoints, FX refresh/override, preview калькулятора, KB CRUD, roles/users CRUD, CSV export лидов.
+- Главный разрыв: Telegram-поток пока не выдает расчет/смету, не использует KB для ответов, не формирует shortlist и не закрывает полный набор BOT-UAT/CALC-UAT.
+- Калькулятор реализован как библиотека и admin preview, но `Estimate` пока не создается как immutable offer snapshot и не связан с Telegram-диалогом.
+- Нет идемпотентности webhook по `update_id` / `chat_id + message_id`; повторная доставка Telegram может создавать дубли лидов, эскалаций и сообщений.
+- RBAC описан моделью ролей, но фактическая авторизация admin endpoints ограничена общим `ADMIN_API_TOKEN`; role-based policy не enforced.
+- Наблюдаемость базовая: есть `audit_events`, но нет request_id, метрик, retry/backoff и явного audit для расчетов/KB/delivery failures.
+- Тесты не были запущены в текущем shell: команда `pytest` отсутствует. В `requirements-dev.txt` pytest зафиксирован, но локальное dev-окружение/venv не подготовлено.
+
+### Критичные GAP для приемки MVP
+| GAP | Почему критично | Основные артефакты |
+|---|---|---|
+| Нет сметы в Telegram flow | Блокирует BOT-UAT-03 и CALC-UAT baseline | `architecture/component_blueprint.md`, `architecture/api_contracts.md`, `management/backlog.md` |
+| Нет persisted `Estimate` snapshot | Нет воспроизводимости оффера: formula/FX/timestamp/items/total | `services/consultant_api/app/models.py`, `services/consultant_api/app/routers/admin.py` |
+| Нет idempotency webhook | Риск дублей при Telegram retry | `architecture/nfr_checklist.md`, `architecture/risk_register.md` |
+| KB CRUD есть, но KB-answering нет | Блокирует BOT-UAT-05/07 и правило “unknown → escalate” | `knowledge_base_corpus_register.md`, `management/blocker_register.md` |
+| Нет shortlist logic | Блокирует BOT-UAT-06 | `management/backlog.md`, `uat_acceptance_scenarios.md` |
+| RBAC не применяется на endpoints | Риск безопасности и несоответствие WI-ADMIN-040 | `architecture/nfr_checklist.md`, `management/backlog.md` |
+| CALC-UAT сценарии в QA matrix помечены blocked | Нельзя формально закрыть UAT без baseline определений | `management/qa_traceability_matrix.md`, `uat_acceptance_scenarios.md` |
+
+### Рекомендуемый порядок работ
+1) Закрыть инфраструктурный минимум: dev env, запуск `pytest`, smoke-команды, фиксация evidence.
+2) Реализовать webhook idempotency и delivery resilience до расширения бизнес-логики.
+3) Интегрировать калькулятор в Telegram flow и сохранять `Estimate` snapshot.
+4) Реализовать KB approved-source answering + unknown/low-confidence escalation.
+5) Довести QA/UAT baseline: CALC-UAT definitions, automated tests, UAT report evidence.
+
+## 5 промптов для дальнейшей работы агентов
+
+### Prompt 1 — Backend Reliability Agent: webhook idempotency + delivery safety
+```text
+Роль: Backend Reliability Agent.
+
+Цель: закрыть критичный GAP по идемпотентности Telegram webhook и снизить риск дублей/таймаутов перед расширением бизнес-логики.
+
+Рабочий язык: русский для отчетов и комментариев к результату; код — в стиле текущего проекта.
+
+Must-read:
+- `architecture/component_blueprint.md`
+- `architecture/api_contracts.md`
+- `architecture/nfr_checklist.md`
+- `architecture/risk_register.md`
+- `management/backlog.md` (WI-BOT-002, WI-DATA-010)
+- `services/consultant_api/app/routers/telegram.py`
+- `services/consultant_api/app/models.py`
+- `services/consultant_api/app/telegram_client.py`
+- `services/consultant_api/tests/*`
+
+Задачи:
+1) Спроектировать и реализовать дедупликацию Telegram update:
+   - минимум по `update_id`;
+   - fallback/доп. защита по `chat_id + message_id`, если `update_id` отсутствует;
+   - повторный update не должен повторно создавать `Message`, `Lead`, `Escalation` и не должен повторно отправлять ответы.
+2) Добавить модель/таблицу или устойчивый механизм хранения processed update/message keys в стиле текущих SQLAlchemy models.
+3) Зафиксировать audit event для duplicate ignore, например `telegram.duplicate_ignored`.
+4) Проверить транзакционные границы webhook: side effects должны быть защищены от частично выполненной обработки.
+5) Добавить тесты на:
+   - первый update обрабатывается;
+   - повторный update возвращает `{ "ok": true }`, но не создает дублей;
+   - duplicate после qualified/low-budget не создает повторные лиды/эскалации;
+   - secret-token behavior не сломан.
+6) Обновить документацию:
+   - `architecture/api_contracts.md` AS-IS;
+   - `architecture/nfr_checklist.md`;
+   - `architecture/risk_register.md` статус R-001.
+
+Ограничения:
+- Не реализовывать калькулятор/KB/shortlist в этом задании.
+- Не менять бизнес-поведение диалога, кроме защиты от дублей.
+- Не откатывать чужие изменения.
+
+Definition of Done:
+- `pytest -q` проходит локально.
+- В документации явно указано новое AS-IS поведение duplicate update.
+- Есть краткий отчет: измененные файлы, тесты, остаточные риски, связанные WI/Risk IDs.
+```
+
+### Prompt 2 — Calculator Integration Agent: Telegram estimate flow + immutable snapshot
+```text
+Роль: Calculator Integration Agent.
+
+Цель: интегрировать калькулятор v1 в Telegram-поток и сохранять расчет как воспроизводимый `Estimate` snapshot.
+
+Рабочий язык: русский для артефактов и отчета.
+
+Must-read:
+- `calculator_formula_specification.md`
+- `official_requirements_specification.md`
+- `technical_assignment_tz.md`
+- `uat_acceptance_scenarios.md`
+- `architecture/api_contracts.md`
+- `architecture/component_blueprint.md`
+- `management/backlog.md` (WI-CALC-010, WI-CALC-020, WI-BOT-014)
+- `management/qa_traceability_matrix.md`
+- `services/consultant_api/app/services/calculator.py`
+- `services/consultant_api/app/routers/telegram.py`
+- `services/consultant_api/app/routers/admin.py`
+- `services/consultant_api/app/models.py`
+
+Задачи:
+1) Определить минимальный UX-триггер расчета в Telegram после сбора достаточных параметров:
+   - расчет только в контуре v1: РФ/Россия, возраст 3–5 лет, мощность ≤160 л.с.;
+   - если scope вне v1 или данных недостаточно — эскалация с `reason_code`.
+2) Реализовать создание `Estimate`:
+   - `formula_version`;
+   - `fx_source`;
+   - `fx_timestamp`;
+   - `fx_rates`;
+   - `items`;
+   - `total_rub`;
+   - ссылка на `conversation_id`;
+   - исходные расчетные параметры в payload/details, если текущая модель требует расширения.
+3) Сохранить принцип immutability: новый расчет создает новую запись, старые не перезаписываются.
+4) Расширить audit:
+   - `estimate.created`;
+   - `calculator.out_of_scope`;
+   - `calculator.missing_rate_or_input`, если применимо.
+5) Обновить admin preview или добавить read endpoint так, чтобы QA мог проверить сохраненную смету.
+6) Добавить тесты:
+   - happy path v1;
+   - country out of scope;
+   - age out of scope;
+   - power out of scope;
+   - immutable повторный расчет;
+   - audit events.
+7) Обновить:
+   - `architecture/api_contracts.md`;
+   - `architecture/component_blueprint.md`;
+   - `management/qa_traceability_matrix.md` statuses/notes for CALC-related cases;
+   - `architecture/risk_register.md` R-003/R-009.
+
+Ограничения:
+- Не реализовывать KB retrieval.
+- Не расширять scope калькулятора за пределы v1.
+- Если ставка/курс/входные данные отсутствуют, не выдавать финальную цену как факт — эскалировать.
+
+Definition of Done:
+- `pytest -q` проходит.
+- Telegram flow может сформировать и сохранить смету в v1 или корректно эскалировать.
+- Документация различает AS-IS после изменения и оставшиеся TO-BE gaps.
+```
+
+### Prompt 3 — KB & Escalation Agent: approved-source answering + unknown escalation
+```text
+Роль: KB & Escalation Agent.
+
+Цель: реализовать минимальный контур ответов по базе знаний с правилом “только approved source; unknown/low-confidence → escalation”.
+
+Рабочий язык: русский для отчетов, code style — текущий Python/FastAPI.
+
+Must-read:
+- `knowledge_base_corpus_register.md`
+- `decision_log.md` (особенно D-007 и решения по KB)
+- `official_requirements_specification.md`
+- `technical_assignment_tz.md`
+- `uat_acceptance_scenarios.md`
+- `architecture/component_blueprint.md`
+- `architecture/api_contracts.md`
+- `management/backlog.md` (WI-BOT-015, WI-ADMIN-030)
+- `management/blocker_register.md` (BR-001, BR-002)
+- `services/consultant_api/app/models.py`
+- `services/consultant_api/app/routers/admin.py`
+- `services/consultant_api/app/routers/telegram.py`
+
+Задачи:
+1) Реализовать минимальный KB lookup поверх существующих `kb_sources` / `kb_docs`:
+   - использовать только `moderation_status="approved"` у источника и документа;
+   - не использовать `restricted`, `deprecated`, `draft`, `waiting_customer` для финальных ответов.
+2) Определить простой deterministic retrieval baseline для MVP:
+   - keyword/tag/title/content match достаточно, если он тестируемый и прозрачно описан;
+   - при неоднозначности/нет совпадений — эскалация.
+3) Интегрировать KB в Telegram flow для вопросов вне последовательного сбора параметров или после квалификации, не ломая текущий сбор 15 параметров.
+4) Добавить reason codes:
+   - `kb_no_approved_source`;
+   - `kb_low_confidence`;
+   - `kb_conflict`;
+   - `unknown_question`.
+5) Добавить audit:
+   - `kb.answer_used` с source/doc ids;
+   - `kb.escalated` с reason_code.
+6) Добавить тесты:
+   - approved source используется;
+   - draft/restricted/deprecated не используется;
+   - unknown question создает escalation;
+   - конфликт/несколько неоднозначных совпадений не приводит к выдуманному ответу.
+7) Обновить:
+   - `architecture/api_contracts.md`;
+   - `architecture/component_blueprint.md`;
+   - `management/qa_traceability_matrix.md` for BOT-UAT-05/07;
+   - `architecture/risk_register.md` R-004/R-005.
+
+Ограничения:
+- Не подключать внешние LLM/RAG без отдельного решения.
+- Не парсить сторонние сайты и не копировать внешний контент.
+- Не закрывать waiting_customer блокеры как resolved без фактически предоставленных материалов.
+
+Definition of Done:
+- Есть тестируемый approved-source gate.
+- Unknown/low-confidence path всегда эскалирует.
+- В audit можно доказать, какой источник использован или почему создана эскалация.
+```
+
+### Prompt 4 — QA Automation & UAT Agent: executable evidence pack
+```text
+Роль: QA Automation & UAT Agent.
+
+Цель: превратить текущие QA-артефакты в исполняемый evidence pack для MVP Поток 1.
+
+Рабочий язык: русский.
+
+Must-read:
+- `uat_acceptance_scenarios.md`
+- `management/qa_traceability_matrix.md`
+- `management/test_suite_catalog.md`
+- `management/go_no_go_checklist.md`
+- `management/defect_policy.md`
+- `management/uat_execution_report_template.md`
+- `management/backlog.md`
+- `architecture/api_contracts.md`
+- `services/consultant_api/tests/*`
+- `README.md`
+
+Задачи:
+1) Подготовить локальное тестовое окружение:
+   - проверить инструкции README;
+   - зафиксировать команды установки dev dependencies;
+   - обеспечить запуск `pytest -q`.
+2) Расширить automated tests под текущий AS-IS:
+   - admin health;
+   - admin token behavior;
+   - Telegram webhook secret;
+   - 15-step qualification happy path;
+   - low budget escalation;
+   - manager takeover + `/resume_bot`;
+   - CSV export smoke;
+   - FX override/list.
+3) Сформировать smoke suite commands:
+   - unit/API tests;
+   - минимальные curl/httpx сценарии, если нужны.
+4) Обновить `management/qa_traceability_matrix.md`:
+   - добавить evidence target для каждого TC;
+   - перевести фактически автоматизированные проверки из `planned` в корректный статус;
+   - оставить `blocked` там, где блокирует отсутствие реализации или CALC-UAT definitions.
+5) Проверить `uat_acceptance_scenarios.md`:
+   - если CALC-UAT-* реально отсутствуют, подготовить отдельный раздел с предлагаемыми CALC-UAT-01..07, не меняя scope без явной пометки “proposal”.
+6) Подготовить первый `management/uat_execution_report_YYYY-MM-DD.md` как шаблонный dry-run/evidence report.
+
+Ограничения:
+- Не менять бизнес-логику сервиса, кроме минимальных testability fixes, если без них тесты невозможны.
+- Не помечать сценарий passed без фактического evidence.
+- Не скрывать blocked/gap статусы.
+
+Definition of Done:
+- Есть воспроизводимая команда тестов.
+- QA matrix показывает реальные evidence/status.
+- Go/No-Go checklist не противоречит фактической готовности.
+- В отчете явно перечислены failed/blocked сценарии и причины.
+```
+
+### Prompt 5 — Delivery Lead Agent: MVP recovery plan + decision/blocker closure
+```text
+Роль: Delivery Lead Agent.
+
+Цель: синхронизировать текущий фактический статус, критический путь и ближайший план закрытия MVP gaps без расширения scope.
+
+Рабочий язык: русский, стиль senior delivery/engineering lead.
+
+Must-read:
+- `README.md`
+- `decision_log.md`
+- `management/backlog.md`
+- `management/roadmap_7_weeks.md`
+- `management/delivery_roadmap.md`
+- `management/go_no_go_checklist.md`
+- `management/blocker_register.md`
+- `management/dependency_register.md`
+- `management/effort_capacity_model.md`
+- `management/weekly_status_template.md`
+- `architecture/risk_register.md`
+- `architecture/component_blueprint.md`
+- `architecture/api_contracts.md`
+- `architecture/nfr_checklist.md`
+
+Задачи:
+1) Сформировать статус “AS-IS на 14.05.2026”:
+   - что реализовано;
+   - что документировано, но не реализовано;
+   - что blocked/waiting_customer/deferred.
+2) Обновить critical path для MVP:
+   - idempotency;
+   - calculator-in-Telegram + Estimate snapshot;
+   - KB approved-source answering;
+   - QA evidence pack;
+   - UAT sign-off.
+3) Проверить, что backlog / roadmap / dependency register / risk register не противоречат друг другу.
+4) Обновить blocker register:
+   - BR-003/BR-005/BR-006 как обязательные для stage/UAT;
+   - BR-001/BR-002 как quality blockers или accepted limitations;
+   - Поток 2 оставить deferred, не смешивать с MVP.
+5) Подготовить decision proposals для `decision_log.md`:
+   - webhook idempotency key policy;
+   - Estimate immutability + FX freeze policy;
+   - admin token/RBAC baseline for stage/prod;
+   - KB source confidence policy;
+   - UAT evidence acceptance rule.
+6) Выпустить короткий weekly status по шаблону:
+   - progress;
+   - risks;
+   - decisions needed;
+   - next 24h / 72h.
+
+Ограничения:
+- Не менять технические контракты без ссылки на владельца/причину.
+- Не закрывать риски как resolved без code/test/document evidence.
+- Не расширять Поток 2: только deferred/dependency notes.
+
+Definition of Done:
+- Есть единая управленческая картина MVP.
+- У каждого blocking gap есть owner, next action и целевой артефакт evidence.
+- Следующий цикл разработки можно стартовать без двусмысленности по приоритетам.
+```
