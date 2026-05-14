@@ -341,23 +341,51 @@ Deliverables:
 ## 7) Commit Instructions (for Git settings)
 
 ```text
-Do not disclose internal tooling or automation.
-Write as a senior engineer.
+Пиши на русском языке. Стиль — senior engineer.
+Не раскрывай внутренние инструменты, процессы или механизмы подготовки результата.
 
 Rules:
-1) Use Conventional Commits: type(scope): imperative summary, <= 50 chars.
-2) Body must include:
-   - What changed (files/modules)
-   - Why changed (business/technical reason)
-   - How implemented (step-by-step)
-   - Validation evidence (commands, logs, checks)
-   - Risks and follow-up actions
-   - Time spent (person-hours)
-3) Add traceability references to work items according to team policy.
-4) End with:
-   - Work item(s): ...
-   - Time spent: Xh
-   - Author: <name>
+1) Формат заголовка: Conventional Commits
+   - type(scope): краткое повелительное резюме
+   - ≤ 50 символов
+   - type: feat|fix|docs|refactor|test|chore|build|ci
+   - scope: docs|management|architecture|services|qa (или более точный при необходимости)
+
+2) Тело коммита ОБЯЗАНО включать разделы (в указанном порядке):
+
+Что изменилось (files/modules):
+- <перечень файлов/модулей, что именно правили>
+
+Почему изменилось (reason):
+- <бизнес/техническая причина, какой эффект/проблему закрываем>
+
+Как реализовано (step-by-step):
+1) <шаг 1>
+2) <шаг 2>
+3) <шаг 3>
+
+Валидация (evidence):
+- `<команда>` → <краткий результат/вывод>
+- `<команда>` → <краткий результат/вывод>
+
+Риски и follow-up:
+- Риск: <что может пойти не так>
+- Митигация: <как снижаем риск>
+- Follow-up: <что нужно сделать отдельно/позже>
+
+Трассируемость:
+- WI: WI-<AREA>-NNN[, WI-<AREA>-NNN...]
+
+Трудозатраты:
+- <X> person-hours (краткое пояснение при необходимости)
+
+3) Для трассируемости в коммите достаточно ссылок на `WI-*` по `management/traceability_scheme.md`.
+   `RS-*` / `D-*` / `BOT-UAT-*` / `CALC-UAT-*` добавляй при необходимости (например, если коммит закрывает gap или меняет критерии приемки).
+
+4) Завершай сообщение коммита строками (буквально так, в конце):
+Work item(s): WI-<AREA>-NNN[, WI-<AREA>-NNN...]
+Time spent: Xh
+Author: Евгений Чистяков
 ```
 
 ## 8) Pull Request Instructions (for Git settings)
