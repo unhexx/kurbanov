@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% set active = active|default('') %}
+
+{% block body %}
+<div class="layout">
+  <aside class="sidebar" aria-label="Основная навигация">
+    <div class="sidebar-title">Панель администратора</div>
+    <div class="sidebar-subtitle">Основное</div>
+    <nav>
+      <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if active == 'dashboard' else '' }}">Сводка</a>
+      <a href="{{ url_for('admin_leads') }}" class="{{ 'active' if active == 'leads' else '' }}">Лиды</a>
+      <a href="{{ url_for('admin_calculator') }}" class="{{ 'active' if active == 'calc' else '' }}">Калькулятор</a>
+    </nav>
+    <div class="sidebar-subtitle">Справочники</div>
+    <nav>
+      <a href="{{ url_for('admin_rates') }}" class="{{ 'active' if active == 'rates' else '' }}">Ставки и сборы</a>
+      <a href="{{ url_for('admin_fx') }}" class="{{ 'active' if active == 'fx' else '' }}">Курсы ЦБ</a>
+      <a href="{{ url_for('admin_kb') }}" class="{{ 'active' if active == 'kb' else '' }}">База знаний</a>
+      <a href="{{ url_for('admin_users') }}" class="{{ 'active' if active == 'users' else '' }}">Пользователи</a>
+    </nav>
+    <div class="sidebar-subtitle">Сервис</div>
+    <nav>
+      <a href="{{ url_for('public_index') }}">Открытый портал →</a>
+      <a href="/docs" target="_blank" rel="noopener">OpenAPI</a>
+      <a href="{{ url_for('admin_logout') }}">Выйти</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <h1>{% block page_title %}Панель администратора{% endblock %}</h1>
+      <div class="user">Сеанс: администратор</div>
+    </header>
+    <div class="content">
+      {% with msgs = get_flashes() %}
+        {% for kind, text in msgs %}
+          <div class="alert {{ kind }}">{{ text }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+    <footer class="footer">Консультант по подбору · версия {{ formula_version }}</footer>
+  </div>
+</div>
+{% endblock %}

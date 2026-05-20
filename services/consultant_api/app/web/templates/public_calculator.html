@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Калькулятор стоимости{% endblock %}
+
+{% block body %}
+<div class="public-container">
+  <div class="public-nav">
+    <a href="{{ url_for('public_index') }}">← На главную</a>
+    <a href="{{ url_for('public_intake') }}">Заполнить анкету</a>
+  </div>
+
+  <div class="card">
+    <h2>Калькулятор итоговой стоимости</h2>
+    <p class="help">Предварительный расчёт по версии формулы {{ formula_version }}. Поддерживается v1: РФ, возраст 3–5 лет, мощность до 160 л.с.</p>
+    <form method="post" action="{{ url_for('public_calculator') }}">
+      <div class="grid cols-2">
+        <div class="form-row">
+          <label for="country">Страна оформления *</label>
+          <input id="country" name="country" type="text" value="{{ form.country or 'РФ' }}" required />
+        </div>
+        <div class="form-row">
+          <label for="age_years">Возраст автомобиля, лет *
+            <span class="hint">3–5 включительно</span>
+          </label>
+          <input id="age_years" name="age_years" type="number" min="0" max="30" value="{{ form.age_years or 4 }}" required />
+        </div>
+        <div class="form-row">
+          <label for="power_hp">Мощность, л.с. *
+            <span class="hint">До 160 включительно</span>
+          </label>
+          <input id="power_hp" name="power_hp" type="number" min="0" max="600" value="{{ form.power_hp or 150 }}" required />
+        </div>
+        <div class="form-row">
+          <label for="car_price_rub">Цена автомобиля, ₽ *</label>
+          <input id="car_price_rub" name="car_price_rub" type="number" min="0" step="0.01" value="{{ form.car_price_rub or 1000000 }}" required />
+        </div>
+        <div class="form-row">
+          <label for="extra_costs_rub">Расходы по стране покупки, ₽</label>
+          <input id="extra_costs_rub" name="extra_costs_rub" type="number" min="0" step="0.01" value="{{ form.extra_costs_rub or 0 }}" />
+        </div>
+        <div class="form-row">
+          <label for="export_cost_rub">Экспортные расходы, ₽</label>
+          <input id="export_cost_rub" name="export_cost_rub" type="number" min="0" step="0.01" value="{{ form.export_cost_rub or 10000 }}" />
+        </div>
+        <div class="form-row">
+          <label for="commission_rub">Комиссия, ₽</label>
+          <input id="commission_rub" name="commission_rub" type="number" min="0" step="0.01" value="{{ form.commission_rub or 50000 }}" />
+        </div>
+        <div class="form-row">
+          <label for="broker_rub">Брокер, ₽</label>
+          <input id="broker_rub" name="broker_rub" type="number" min="0" step="0.01" value="{{ form.broker_rub or 85000 }}" />
+        </div>
+        <div class="form-row">
+          <label for="customs_rub">Таможенные платежи, ₽</label>
+          <input id="customs_rub" name="customs_rub" type="number" min="0" step="0.01" value="{{ form.customs_rub or 300000 }}" />
+        </div>
+        <div class="form-row">
+          <label for="logistics_rub">Логистика, ₽</label>
+          <input id="logistics_rub" name="logistics_rub" type="number" min="0" step="0.01" value="{{ form.logistics_rub or 200000 }}" />
+        </div>
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="btn">Рассчитать</button>
+      </div>
+    </form>
+
+    {% if result %}
+      <div class="calc-summary">
+        <div class="muted" style="font-size: 0.85rem;">Версия формулы: {{ result.formula_version }}</div>
+        <div class="calc-total">Итого: {{ result.total_human }} ₽</div>
+      </div>
+      <ul class="calc-items">
+        {% for item in result.lines %}
+          <li><span>{{ item.title }}</span><span>{{ item.amount_human }} ₽</span></li>
+        {% endfor %}
+      </ul>
+      <p class="help" style="margin-top: 14px;">Расчёт носит ориентировочный характер. Точная стоимость согласовывается с менеджером.</p>
+    {% elif error %}
+      <div class="alert error" style="margin-top: 14px;">{{ error }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

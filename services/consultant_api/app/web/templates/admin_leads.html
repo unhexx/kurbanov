@@ -1,0 +1,80 @@
+{% extends "_admin_layout.html" %}
+{% set active = 'leads' %}
+{% block page_title %}Лиды{% endblock %}
+
+{% block content %}
+<div class="actions-bar">
+  <h2 style="margin: 0;">Лиды клиентов</h2>
+  <div>
+    <a class="btn secondary" href="/admin/leads/export.csv">Скачать CSV</a>
+  </div>
+</div>
+
+<div class="card">
+  <form method="get" action="{{ url_for('admin_leads') }}" class="grid cols-4" style="align-items: end;">
+    <div class="form-row" style="margin: 0;">
+      <label for="status">Статус</label>
+      <select id="status" name="status">
+        <option value="">— любой —</option>
+        <option value="qualified" {% if status == 'qualified' %}selected{% endif %}>Квалифицирован</option>
+        <option value="budget_low" {% if status == 'budget_low' %}selected{% endif %}>Бюджет ниже порога</option>
+        <option value="new" {% if status == 'new' %}selected{% endif %}>Новый</option>
+      </select>
+    </div>
+    <div class="form-row" style="margin: 0;">
+      <label for="q">Поиск по содержимому</label>
+      <input id="q" name="q" type="search" value="{{ q or '' }}" placeholder="например: Toyota" />
+    </div>
+    <div class="form-row" style="margin: 0;">
+      <label for="limit">Записей на странице</label>
+      <select id="limit" name="limit">
+        {% for v in [25, 50, 100, 200] %}
+          <option value="{{ v }}" {% if limit == v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row" style="margin: 0;">
+      <button class="btn" type="submit">Применить</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  {% if leads %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Создан</th>
+          <th>Чат</th>
+          <th>Статус</th>
+          <th>Параметры</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr>
+          <td>{{ lead.created_at }}</td>
+          <td>{{ lead.chat_id }}</td>
+          <td>
+            {% if lead.status == 'qualified' %}<span class="badge success">Квалифицирован</span>
+            {% elif lead.status == 'budget_low' %}<span class="badge warn">Бюджет ниже порога</span>
+            {% else %}<span class="badge">{{ lead.status }}</span>
+            {% endif %}
+          </td>
+          <td class="muted" style="font-size: 0.85rem;">
+            <details>
+              <summary style="cursor: pointer; color: var(--accent);">Показать</summary>
+              <pre style="white-space: pre-wrap; margin: 6px 0 0;">{{ lead.pretty }}</pre>
+            </details>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">Лидов не найдено по выбранным фильтрам.</div>
+  {% endif %}
+</div>
+{% endblock %}

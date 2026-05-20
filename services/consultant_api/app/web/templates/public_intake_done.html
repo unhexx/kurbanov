@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Запрос принят{% endblock %}
+
+{% block body %}
+<div class="public-container">
+  <div class="public-nav">
+    <a href="{{ url_for('public_index') }}">← На главную</a>
+  </div>
+  <div class="card">
+    <h2>Запрос принят</h2>
+    {% if lead.status == 'qualified' %}
+      <div class="alert success">Спасибо! Параметры зафиксированы — менеджер свяжется с вами в ближайшее время.</div>
+    {% elif lead.status == 'budget_low' %}
+      <div class="alert info">
+        Указанный бюджет ниже 1 500 000 ₽. В целевом контуре подбор может быть ограничен,
+        но менеджер уточнит доступные варианты.
+      </div>
+    {% else %}
+      <div class="alert info">Запрос принят. Менеджер свяжется с вами.</div>
+    {% endif %}
+
+    <h3 style="margin-top: 20px;">Сводка параметров</h3>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          {% for row in summary %}
+            <tr><th style="width: 40%;">{{ row.label }}</th><td>{{ row.value }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="row-actions" style="margin-top: 18px;">
+      <a href="{{ url_for('public_index') }}" class="btn secondary">На главную</a>
+      <a href="{{ url_for('public_calculator') }}" class="btn">Открыть калькулятор</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

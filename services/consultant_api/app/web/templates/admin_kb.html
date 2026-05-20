@@ -1,0 +1,95 @@
+{% extends "_admin_layout.html" %}
+{% set active = 'kb' %}
+{% block page_title %}База знаний{% endblock %}
+
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Источники</h2>
+    <p class="help">Подтверждённые источники для использования в подборе.</p>
+    {% if sources %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Код</th><th>Название</th><th>Статус</th></tr></thead>
+        <tbody>
+          {% for s in sources %}
+            <tr>
+              <td><code>{{ s.code }}</code></td>
+              <td>{{ s.title }}{% if s.url %} · <a href="{{ s.url }}" target="_blank" rel="noopener">ссылка</a>{% endif %}</td>
+              <td>
+                {% if s.moderation_status == 'approved' %}<span class="badge success">Подтверждён</span>
+                {% elif s.moderation_status == 'waiting_customer' %}<span class="badge warn">Ожидает заказчика</span>
+                {% else %}<span class="badge">{{ s.moderation_status }}</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">Источников ещё нет.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Добавить документ</h2>
+    <p class="help">Документы базы знаний привязываются к источникам.</p>
+    <form method="post" action="{{ url_for('admin_kb_create_doc') }}">
+      <div class="form-row">
+        <label for="source_code">Источник</label>
+        <select id="source_code" name="source_code" required>
+          {% for s in sources %}
+            <option value="{{ s.code }}">{{ s.code }} — {{ s.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="title">Название документа</label>
+        <input id="title" name="title" type="text" required />
+      </div>
+      <div class="form-row">
+        <label for="content">Содержание</label>
+        <textarea id="content" name="content" required></textarea>
+      </div>
+      <div class="form-row">
+        <label for="moderation_status">Статус модерации</label>
+        <select id="moderation_status" name="moderation_status">
+          <option value="draft">Черновик</option>
+          <option value="review">На проверке</option>
+          <option value="approved">Подтверждён</option>
+        </select>
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="btn">Создать</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Последние документы</h2>
+  {% if docs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Источник</th><th>Название</th><th>Статус</th><th>Обновлён</th></tr></thead>
+      <tbody>
+        {% for d in docs %}
+          <tr>
+            <td>{{ d.source_code }}</td>
+            <td>{{ d.title }}</td>
+            <td>
+              {% if d.moderation_status == 'approved' %}<span class="badge success">Подтверждён</span>
+              {% elif d.moderation_status == 'review' %}<span class="badge warn">На проверке</span>
+              {% else %}<span class="badge">{{ d.moderation_status }}</span>{% endif %}
+            </td>
+            <td>{{ d.updated_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">Документы пока не добавлены.</div>
+  {% endif %}
+</div>
+{% endblock %}
