@@ -56,10 +56,19 @@ cp .env.example .env
 
 Пустой `ADMIN_API_TOKEN` допустим только для локальной разработки: web-админка и admin API
 будут открыты без входа. Для shared, stage и production окружений токен обязателен.
-`PERPLEXITY_API_KEY` хранится только в локальном `.env` (gitignored). В репозитории —
+`PERPLEXITY_API_KEY` хранится только в локальном `.env` (gitignored). В репозитории -
 исключительно placeholder в `.env.example`. При пустом ключе Telegram-консультант работает
 в режиме rule-based: задаёт следующий недостающий вопрос анкеты без обращения к внешнему
 сервису.
+
+## Инструкции по ролям
+
+- [Инструкция пользователя](management/user_guide.md) - публичный портал, анкета, калькулятор
+  и ограничения расчета v1.
+- [Инструкция оператора и менеджера](management/operator_guide.md) - обработка лидов,
+  эскалации, CSV-экспорт и takeover Telegram-диалогов.
+- [Инструкция администратора](management/administrator_guide.md) - запуск, проверка версий,
+  переменные окружения, администрирование данных и health-check.
 
 ## Быстрый старт: локально с PostgreSQL
 
@@ -80,8 +89,8 @@ pip install -r services/consultant_api/requirements.txt
 Инициализируйте и наполните базовые справочники:
 
 ```bash
-python3 services/consultant_api/scripts/init_db.py
-python3 services/consultant_api/scripts/seed.py
+PYTHONPATH=services/consultant_api python3 services/consultant_api/scripts/init_db.py
+PYTHONPATH=services/consultant_api python3 services/consultant_api/scripts/seed.py
 ```
 
 Запустите API:
@@ -111,8 +120,8 @@ python3 -m pip install -r services/consultant_api/requirements-dev.txt
 rm -f /tmp/kurbanov_smoke.db
 export DATABASE_URL=sqlite+pysqlite:////tmp/kurbanov_smoke.db
 export ADMIN_API_TOKEN=
-python3 services/consultant_api/scripts/init_db.py
-python3 services/consultant_api/scripts/seed.py
+PYTHONPATH=services/consultant_api python3 services/consultant_api/scripts/init_db.py
+PYTHONPATH=services/consultant_api python3 services/consultant_api/scripts/seed.py
 python3 -m uvicorn app.main:app --app-dir services/consultant_api --host 127.0.0.1 --port 18000
 ```
 
@@ -167,9 +176,9 @@ curl -fsS http://127.0.0.1:18000/admin/health
 
 Поведение бота-консультанта `Автоподбор - Exception.Expert` описано в:
 
-- `architecture/ai_consultant_instructions.md` — persona, матрица эскалаций, правила
+- `architecture/ai_consultant_instructions.md` - persona, матрица эскалаций, правила
   grounded-ответов, правила контекста диалога;
-- `management/telegram_ai_consultant_skill.md` — операционные правила, фирменные фразы,
+- `management/telegram_ai_consultant_skill.md` - операционные правила, фирменные фразы,
   чек-лист UAT.
 
 Бот не раскрывает клиенту техническую природу и не упоминает внутренние сервисы.
