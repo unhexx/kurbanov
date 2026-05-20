@@ -46,10 +46,20 @@ cp .env.example .env
 - `TELEGRAM_BOT_TOKEN` - токен Telegram-бота;
 - `TELEGRAM_WEBHOOK_SECRET_TOKEN` - опциональная защита webhook;
 - `TELEGRAM_MANAGER_CHAT_ID` - опциональные уведомления менеджеру;
-- `ADMIN_API_TOKEN` - токен входа в админку и защиты admin API.
+- `ADMIN_API_TOKEN` - токен входа в админку и защиты admin API;
+- `PERPLEXITY_API_KEY` - ключ внешнего сервиса формирования ответов консультанта;
+- `PERPLEXITY_MODEL` - модель внешнего сервиса (по умолчанию `sonar-pro`);
+- `PERPLEXITY_BASE_URL`, `PERPLEXITY_MAX_TOKENS`, `PERPLEXITY_TEMPERATURE`,
+  `PERPLEXITY_TIMEOUT_SECONDS`, `PERPLEXITY_MAX_RETRIES` - параметры клиента;
+- `BUDGET_THRESHOLD_RUB` - бюджетный порог подбора (по умолчанию `1500000`);
+- `CONSULTANT_HISTORY_LIMIT` - размер истории диалога, передаваемый в модель.
 
 Пустой `ADMIN_API_TOKEN` допустим только для локальной разработки: web-админка и admin API
 будут открыты без входа. Для shared, stage и production окружений токен обязателен.
+`PERPLEXITY_API_KEY` хранится только в локальном `.env` (gitignored). В репозитории —
+исключительно placeholder в `.env.example`. При пустом ключе Telegram-консультант работает
+в режиме rule-based: задаёт следующий недостающий вопрос анкеты без обращения к внешнему
+сервису.
 
 ## Быстрый старт: локально с PostgreSQL
 
@@ -152,3 +162,18 @@ curl -fsS http://127.0.0.1:18000/admin/health
 - `scripts/init_db.py` - создание таблиц;
 - `scripts/seed.py` - базовые роли и источники базы знаний;
 - `tests/` - unit и integration-тесты.
+
+## Telegram-консультант
+
+Поведение бота-консультанта `Автоподбор - Exception.Expert` описано в:
+
+- `architecture/ai_consultant_instructions.md` — persona, матрица эскалаций, правила
+  grounded-ответов, правила контекста диалога;
+- `management/telegram_ai_consultant_skill.md` — операционные правила, фирменные фразы,
+  чек-лист UAT.
+
+Бот не раскрывает клиенту техническую природу и не упоминает внутренние сервисы.
+Передача профильному менеджеру выполняется автоматически в сценариях: бюджет ниже
+порога, прямая просьба клиента, нестандартный контур (электро, мощность > 160 л.с.,
+страна вне РФ/РБ/КЗ), сообщения после квалификации, нетекстовые сообщения, низкая
+уверенность модели или сбой внешнего сервиса.

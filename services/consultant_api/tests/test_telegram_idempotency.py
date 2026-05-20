@@ -44,7 +44,7 @@ def test_webhook_idempotency_by_update_id():
 
     db = SessionLocal()
     try:
-        assert db.query(Message).count() == 1
+        assert db.query(Message).filter(Message.direction == "in").count() == 1
         assert db.query(Lead).count() == 0
         assert db.query(Escalation).count() == 0
         assert (
