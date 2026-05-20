@@ -184,6 +184,23 @@ class AuditEvent(Base):
     )
 
 
+class TelegramUpdateDedup(Base):
+    __tablename__ = "telegram_update_dedup"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+
+    update_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, index=True
+    )
+
+
 class KnowledgeBaseSource(Base):
     __tablename__ = "kb_sources"
 

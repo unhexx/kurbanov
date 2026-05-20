@@ -28,8 +28,12 @@ Request body:
 
 Behavior (high level):
 1) Записывает `audit_events(event_type="telegram.update")` с `payload=update`.
-2) Если в update нет `message`/`edited_message` → возвращает `{ "ok": true }` без дальнейших действий.
-3) Иначе:
+2) Регистрирует идемпотентность update:
+   - ключ по `update_id` (fallback: `chat_id + message_id`, если `update_id` отсутствует/невалиден);
+   - при повторной доставке того же update: пишет `audit_events(event_type="telegram.duplicate_ignored")`
+     и возвращает `{ "ok": true }` без дальнейших side-effects (без дублей `Message`/`Lead`/`Escalation` и без повторной отправки сообщений).
+3) Если в update нет `message`/`edited_message` → возвращает `{ "ok": true }` без дальнейших действий.
+4) Иначе:
    - создает/находит `Conversation` по `chat_id`;
    - пишет входящее сообщение в `messages(direction="in", raw=<message>)`;
    - применяет правила takeover / паузы бота / квалификации / эскалаций.
