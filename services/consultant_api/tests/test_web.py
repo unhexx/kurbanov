@@ -1,9 +1,7 @@
-import os
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 
@@ -22,8 +20,8 @@ def client(tmp_path: Path, monkeypatch):
 
     importlib.reload(db_module)
 
-    import app.models as models_module
     import app.main as main_module
+    import app.models as models_module
     import app.web.router as web_router
 
     importlib.reload(models_module)
@@ -153,7 +151,12 @@ def test_admin_dashboard_when_no_token_set(client):
 def test_admin_rates_save_and_list(client):
     resp = client.post(
         "/admin/rates",
-        data={"code": "BROKER_BASE", "title": "Базовая ставка брокера", "currency": "RUB", "amount": "5000"},
+        data={
+            "code": "BROKER_BASE",
+            "title": "Базовая ставка брокера",
+            "currency": "RUB",
+            "amount": "5000",
+        },
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -163,7 +166,12 @@ def test_admin_rates_save_and_list(client):
 def test_admin_users_save_validation(client):
     resp = client.post(
         "/admin/users",
-        data={"telegram_user_id": "999", "role_code": "manager", "username": "manager_one", "is_active": "1"},
+        data={
+            "telegram_user_id": "999",
+            "role_code": "manager",
+            "username": "manager_one",
+            "is_active": "1",
+        },
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -183,8 +191,8 @@ def test_admin_login_with_token(tmp_path: Path, monkeypatch):
 
     importlib.reload(db_module)
 
-    import app.models as models_module
     import app.main as main_module
+    import app.models as models_module
     import app.web.router as web_router
 
     importlib.reload(models_module)
