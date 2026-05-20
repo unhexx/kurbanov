@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -14,11 +17,34 @@ from app.models import (
     TelegramUpdateDedup,
     User,
 )
+from app.services.consultant import (
+    NEUTRAL_HANDOFF_TEXT,
+    SERVICE_UNAVAILABLE_FALLBACK_TEXT,
+    ConsultantDecision,
+    build_calculator_hint,
+    detect_non_standard_scope,
+    detect_non_text,
+    is_below_budget_threshold,
+    is_manager_request,
+    make_escalation,
+)
 from app.services.dialog_engine import build_summary, next_missing_field, normalize_field_value
+from app.services.perplexity_client import (
+    ConsultantResult,
+    PerplexityClient,
+    build_consultant_system_prompt,
+)
 from app.settings import settings
 from app.telegram_client import send_message
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/telegram", tags=["telegram"])
+
+
+def get_consultant_client() -> PerplexityClient:
+    """Фабрика клиента консультанта (легко переопределяется в тестах)."""
+
+    return PerplexityClient()
 
 
 def _get_or_create_conversation(db: Session, chat_id: int) -> Conversation:
@@ -97,11 +123,138 @@ def _try_register_dedup(db: Session, key: str, meta: dict) -> bool:
     return True
 
 
+def _record_outgoing(db: Session, conv_id, chat_id: int, text: str) -> None:
+    db.add(
+        Message(
+            conversation_id=conv_id,
+            direction="out",
+            text=text,
+            raw={"chat_id": chat_id},
+        )
+    )
+
+
+def _audit(db: Session, *, event_type: str, conv_id=None, payload: dict | None = None) -> None:
+    db.add(
+        AuditEvent(
+            event_type=event_type,
+            conversation_id=conv_id,
+            payload=payload or {},
+        )
+    )
+
+
+def _recent_history(db: Session, conv_id, limit: int) -> list[dict[str, str]]:
+    """Последние сообщения диалога в формате для модели (user/assistant)."""
+
+    rows = (
+        db.query(Message)
+        .filter(Message.conversation_id == conv_id)
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    history: list[dict[str, str]] = []
+    for row in reversed(rows):
+        role = "user" if row.direction == "in" else "assistant"
+        text = (row.text or "").strip()
+        if not text:
+            continue
+        history.append({"role": role, "content": text})
+    return history
+
+
+def _do_escalate(
+    db: Session,
+    *,
+    conv: Conversation,
+    chat_id: int,
+    reason: str,
+    text: str,
+    manager_note: str = "",
+    extra_payload: dict | None = None,
+) -> None:
+    details = {"text": text}
+    if manager_note:
+        details["manager_note"] = manager_note
+    if extra_payload:
+        details.update(extra_payload)
+
+    db.add(
+        Escalation(
+            conversation_id=conv.id,
+            reason_code=reason,
+            details=details,
+        )
+    )
+    _audit(
+        db,
+        event_type="escalation.created",
+        conv_id=conv.id,
+        payload={"reason_code": reason},
+    )
+    _record_outgoing(db, conv.id, chat_id, text)
+    db.commit()
+
+    send_message(chat_id, text)
+    _notify_manager(chat_id, conv, reason=reason, note=manager_note)
+
+
+def _do_respond(
+    db: Session,
+    *,
+    conv: Conversation,
+    chat_id: int,
+    text: str,
+) -> None:
+    _record_outgoing(db, conv.id, chat_id, text)
+    _audit(
+        db,
+        event_type="consultant.respond",
+        conv_id=conv.id,
+        payload={"chat_id": chat_id, "length": len(text)},
+    )
+    db.commit()
+    send_message(chat_id, text)
+
+
+def _rule_based_decision(
+    *,
+    collected: dict,
+    text: str,
+) -> ConsultantDecision | None:
+    """Жёсткие правила, имеющие приоритет над сигналом модели."""
+
+    if is_manager_request(text):
+        return make_escalation("manager_requested", manager_note=text[:512])
+
+    is_non_std, code = detect_non_standard_scope(collected, text)
+    if is_non_std and code:
+        return make_escalation(code, manager_note=text[:512])
+
+    return None
+
+
+async def _ask_consultant(
+    client: PerplexityClient,
+    *,
+    system_prompt: str,
+    history: list[dict[str, str]],
+    user_text: str,
+) -> ConsultantResult:
+    return await client.generate(
+        system_prompt=system_prompt,
+        history=history,
+        user_text=user_text,
+    )
+
+
 @router.post("/webhook")
 def telegram_webhook(
     update: dict,
     db: Session = Depends(get_db),
     x_telegram_bot_api_secret_token: str | None = Header(default=None),
+    consultant_client: PerplexityClient = Depends(get_consultant_client),
 ):
     if settings.telegram_webhook_secret_token:
         if (
@@ -158,7 +311,7 @@ def telegram_webhook(
             direction="in",
             telegram_message_id=message.get("message_id"),
             sender_telegram_user_id=sender_id,
-            text=text,
+            text=text or None,
             raw=message,
         )
     )
@@ -194,25 +347,30 @@ def telegram_webhook(
     if conv.bot_paused:
         return {"ok": True}
 
-    # После квалификации любые уточнения отдаём менеджеру (правило качества)
+    # Не-текстовые сообщения от клиента — сразу эскалация.
+    if detect_non_text(message):
+        _do_escalate(
+            db,
+            conv=conv,
+            chat_id=chat_id,
+            reason="non_text_message",
+            text=NEUTRAL_HANDOFF_TEXT,
+            manager_note="Клиент прислал нетекстовое сообщение.",
+            extra_payload={"raw_keys": [k for k in message.keys() if k not in {"chat", "from"}]},
+        )
+        return {"ok": True}
+
+    # После квалификации любые уточнения отдаём менеджеру.
     if conv.state == "qualified":
-        db.add(
-            Escalation(
-                conversation_id=conv.id,
-                reason_code="post_qualification_message",
-                details={"text": text},
-            )
+        _do_escalate(
+            db,
+            conv=conv,
+            chat_id=chat_id,
+            reason="post_qualification_message",
+            text=NEUTRAL_HANDOFF_TEXT,
+            manager_note=text[:512],
+            extra_payload={"text": text},
         )
-        db.add(
-            AuditEvent(
-                event_type="escalation.created",
-                conversation_id=conv.id,
-                payload={"reason_code": "post_qualification_message"},
-            )
-        )
-        db.commit()
-        send_message(chat_id, "Передаю уточнение менеджеру.")
-        _notify_manager(chat_id, {"message": text})
         return {"ok": True}
 
     # Команды клиента
@@ -220,10 +378,15 @@ def telegram_webhook(
         conv.state = "collecting"
         conv.data = {"collected": {}}
         db.commit()
-        send_message(chat_id, "Здравствуйте! Начнем с пары вопросов для подбора.")
+        greeting = (
+            "Здравствуйте. Я консультант компании Автоподбор - Exception.Expert. "
+            "Помогу подобрать автомобиль под ваши задачи и подготовить расчёт под ключ. "
+            "Начнём с пары вопросов."
+        )
+        _do_respond(db, conv=conv, chat_id=chat_id, text=greeting)
         field = next_missing_field(conv.data.get("collected", {}))
         if field:
-            send_message(chat_id, field.question)
+            _do_respond(db, conv=conv, chat_id=chat_id, text=field.question)
         return {"ok": True}
 
     collected = (conv.data or {}).get("collected") or {}
@@ -233,81 +396,182 @@ def telegram_webhook(
         conv.data = {"collected": collected}
         db.commit()
 
-    pending = next_missing_field(collected)
-    if pending:
-        # Бюджетный порог: если уже есть budget_rub < 1_500_000,
-        # то не обещаем подбор в целевом контуре.
+    # Жёсткое правило: бюджет ниже порога — эскалация.
+    if is_below_budget_threshold(collected):
         budget = collected.get("budget_rub")
-        if isinstance(budget, int) and budget < 1_500_000:
-            db.add(
-                Escalation(
-                    conversation_id=conv.id,
-                    reason_code="budget_below_threshold",
-                    details={"budget_rub": budget},
-                )
+        db.add(
+            Lead(
+                conversation_id=conv.id,
+                chat_id=chat_id,
+                customer_telegram_user_id=conv.customer_telegram_user_id,
+                status="budget_low",
+                payload={"collected": collected},
             )
-            db.add(
-                AuditEvent(
-                    event_type="escalation.created",
-                    conversation_id=conv.id,
-                    payload={"reason_code": "budget_below_threshold", "budget_rub": budget},
-                )
-            )
-            db.add(
-                Lead(
-                    conversation_id=conv.id,
-                    chat_id=chat_id,
-                    customer_telegram_user_id=conv.customer_telegram_user_id,
-                    status="budget_low",
-                    payload={"collected": collected},
-                )
-            )
-            db.commit()
-            send_message(
-                chat_id,
-                (
-                    "Бюджет ниже 1 500 000 ₽. В целевом контуре подбор может быть недоступен — "
-                    "передаю запрос менеджеру для уточнения вариантов."
-                ),
-            )
-            _notify_manager(chat_id, collected)
-            return {"ok": True}
-        send_message(chat_id, pending.question)
+        )
+        _do_escalate(
+            db,
+            conv=conv,
+            chat_id=chat_id,
+            reason="budget_below_threshold",
+            text=(
+                "По бюджету ниже 1 500 000 ₽ самостоятельный подбор в нашем целевом контуре "
+                "может быть недоступен. " + NEUTRAL_HANDOFF_TEXT
+            ),
+            manager_note=f"budget_rub={budget}",
+            extra_payload={"budget_rub": budget},
+        )
         return {"ok": True}
 
-    # Все параметры собраны → фиксируем лид и предлагаем следующий шаг
-    conv.state = "qualified"
-    db.add(
-        Lead(
-            conversation_id=conv.id,
+    rule_decision = _rule_based_decision(collected=collected, text=text)
+    if rule_decision is not None and rule_decision.action == "escalate":
+        _do_escalate(
+            db,
+            conv=conv,
             chat_id=chat_id,
-            customer_telegram_user_id=conv.customer_telegram_user_id,
-            status="qualified",
-            payload={"collected": collected},
+            reason=rule_decision.reason,
+            text=rule_decision.text,
+            manager_note=rule_decision.manager_note,
+            extra_payload={"text": text},
         )
-    )
-    db.add(
-        AuditEvent(
+        return {"ok": True}
+
+    # Все параметры собраны → фиксируем лид и предлагаем следующий шаг.
+    pending = next_missing_field(collected)
+    if not pending:
+        conv.state = "qualified"
+        db.add(
+            Lead(
+                conversation_id=conv.id,
+                chat_id=chat_id,
+                customer_telegram_user_id=conv.customer_telegram_user_id,
+                status="qualified",
+                payload={"collected": collected},
+            )
+        )
+        _audit(
+            db,
             event_type="lead.qualified",
-            conversation_id=conv.id,
+            conv_id=conv.id,
             payload={"chat_id": chat_id, "collected": collected},
         )
-    )
-    db.commit()
+        ack = (
+            "Спасибо. Параметры зафиксированы. Передаю менеджеру для подбора и расчёта."
+        )
+        _do_respond(db, conv=conv, chat_id=chat_id, text=ack)
+        _notify_manager(chat_id, conv, collected_override=collected)
+        return {"ok": True}
 
-    send_message(
-        chat_id,
-        "Спасибо. Параметры зафиксированы. Передаю менеджеру для подбора и расчета.",
+    # Сбор параметров идёт — формируем естественный ответ через внешний сервис.
+    pending_question = pending.question if pending else None
+    calc_hint = build_calculator_hint(collected)
+    system_prompt = build_consultant_system_prompt(
+        collected=collected,
+        pending_field_question=pending_question,
+        calc_hint=calc_hint,
     )
-    _notify_manager(chat_id, collected)
+
+    if not consultant_client.is_configured:
+        # Конфигурация внешнего сервиса не задана — используем rule-based вопрос,
+        # чтобы не блокировать сбор параметров в локальной разработке.
+        _do_respond(db, conv=conv, chat_id=chat_id, text=pending.question)
+        return {"ok": True}
+
+    history = _recent_history(db, conv.id, limit=settings.consultant_history_limit)
+    # Последнее входящее уже сохранили — это и есть user_text.
+    history = [h for h in history if not (h["role"] == "user" and h["content"] == text)]
+
+    try:
+        result = asyncio.run(
+            _ask_consultant(
+                consultant_client,
+                system_prompt=system_prompt,
+                history=history,
+                user_text=text,
+            )
+        )
+    except RuntimeError:
+        # На случай вложенного event loop (вряд ли в Sync FastAPI route, но безопасно).
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(
+                _ask_consultant(
+                    consultant_client,
+                    system_prompt=system_prompt,
+                    history=history,
+                    user_text=text,
+                )
+            )
+        finally:
+            loop.close()
+
+    if result.action == "error":
+        _audit(
+            db,
+            event_type="consultant.api_error",
+            conv_id=conv.id,
+            payload={"reason": result.reason},
+        )
+        _do_escalate(
+            db,
+            conv=conv,
+            chat_id=chat_id,
+            reason="low_confidence",
+            text=SERVICE_UNAVAILABLE_FALLBACK_TEXT,
+            manager_note=f"consultant_api_error: {result.reason}",
+            extra_payload={"text": text, "api_reason": result.reason},
+        )
+        return {"ok": True}
+
+    if result.action == "escalate":
+        reason = result.reason or "low_confidence"
+        client_text = result.text.strip() or NEUTRAL_HANDOFF_TEXT
+        _do_escalate(
+            db,
+            conv=conv,
+            chat_id=chat_id,
+            reason=reason,
+            text=client_text,
+            manager_note=result.manager_note or text[:512],
+            extra_payload={"text": text, "citations": result.citations},
+        )
+        return {"ok": True}
+
+    # action == "respond"
+    answer = result.text.strip()
+    if not answer:
+        _do_escalate(
+            db,
+            conv=conv,
+            chat_id=chat_id,
+            reason="low_confidence",
+            text=NEUTRAL_HANDOFF_TEXT,
+            manager_note="empty answer from consultant service",
+            extra_payload={"text": text},
+        )
+        return {"ok": True}
+
+    _do_respond(db, conv=conv, chat_id=chat_id, text=answer)
     return {"ok": True}
 
 
-def _notify_manager(chat_id: int, collected: dict) -> None:
+def _notify_manager(
+    chat_id: int,
+    conv: Conversation,
+    *,
+    reason: str | None = None,
+    note: str = "",
+    collected_override: dict | None = None,
+) -> None:
     if not settings.telegram_manager_chat_id:
         return
-    summary = build_summary(collected)
-    send_message(
-        int(settings.telegram_manager_chat_id),
-        f"Новый запрос (чат {chat_id}):\n{summary}",
-    )
+    collected = collected_override
+    if collected is None:
+        collected = (conv.data or {}).get("collected") or {}
+    summary = build_summary(collected) if collected else "(параметры не собраны)"
+    header = f"Новый запрос (чат {chat_id})"
+    if reason:
+        header += f", причина: {reason}"
+    body = header + ":\n" + summary
+    if note:
+        body += f"\n---\n{note}"
+    send_message(int(settings.telegram_manager_chat_id), body)
