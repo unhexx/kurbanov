@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Анкета подбора автомобиля{% endblock %}
+
+{% block body %}
+<div class="public-container">
+  <div class="public-nav">
+    <a href="{{ url_for('public_index') }}">← На главную</a>
+    <span class="muted">Шаг 1 из 1</span>
+  </div>
+
+  <div class="card">
+    <h2>Анкета подбора</h2>
+    <p class="help">Чем подробнее ответите, тем точнее подберём варианты. Поля, отмеченные звёздочкой, обязательные.</p>
+    <form method="post" action="{{ url_for('public_intake') }}" novalidate>
+      <div class="grid cols-2">
+        {% for field in fields %}
+          <div class="form-row">
+            <label for="{{ field.key }}">
+              {{ field.question }}{% if field.required %} *{% endif %}
+              {% if field.hint %}<span class="hint">{{ field.hint }}</span>{% endif %}
+            </label>
+            {% if field.type == 'select' %}
+              <select id="{{ field.key }}" name="{{ field.key }}" {% if field.required %}required{% endif %}>
+                <option value="">— выбрать —</option>
+                {% for opt in field.options %}
+                  <option value="{{ opt }}" {% if values.get(field.key) == opt %}selected{% endif %}>{{ opt }}</option>
+                {% endfor %}
+              </select>
+            {% elif field.type == 'number' %}
+              <input id="{{ field.key }}" name="{{ field.key }}" type="number" min="0" value="{{ values.get(field.key, '') }}" {% if field.required %}required{% endif %} />
+            {% else %}
+              <input id="{{ field.key }}" name="{{ field.key }}" type="text" value="{{ values.get(field.key, '') }}" {% if field.required %}required{% endif %} />
+            {% endif %}
+            {% if errors.get(field.key) %}
+              <small style="color: var(--danger);">{{ errors[field.key] }}</small>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="form-row">
+        <label for="contact">Как с вами связаться? *
+          <span class="hint">Telegram, телефон или e-mail</span>
+        </label>
+        <input id="contact" name="contact" type="text" value="{{ values.get('contact', '') }}" required />
+        {% if errors.get('contact') %}<small style="color: var(--danger);">{{ errors['contact'] }}</small>{% endif %}
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="btn">Отправить запрос</button>
+        <a href="{{ url_for('public_index') }}" class="btn secondary">Отмена</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

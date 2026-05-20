@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Вход в панель администратора{% endblock %}
+
+{% block body %}
+<div class="public-container" style="max-width: 420px; padding-top: 64px;">
+  <div class="card">
+    <h2 style="text-align: center;">Вход в панель</h2>
+    <p class="help" style="text-align: center;">Введите административный токен доступа.</p>
+    {% with msgs = get_flashes() %}
+      {% for kind, text in msgs %}
+        <div class="alert {{ kind }}">{{ text }}</div>
+      {% endfor %}
+    {% endwith %}
+    <form method="post" action="{{ url_for('admin_login') }}" autocomplete="off">
+      <div class="form-row">
+        <label for="token">Токен администратора</label>
+        <input id="token" name="token" type="password" required autofocus />
+      </div>
+      <button type="submit" class="btn" style="width: 100%;">Войти</button>
+    </form>
+    <p class="help" style="margin-top: 14px; text-align: center;">
+      <a href="{{ url_for('public_index') }}">← На главную</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

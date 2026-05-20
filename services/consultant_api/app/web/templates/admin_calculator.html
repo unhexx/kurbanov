@@ -1,0 +1,85 @@
+{% extends "_admin_layout.html" %}
+{% set active = 'calc' %}
+{% block page_title %}Калькулятор стоимости{% endblock %}
+
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Параметры расчёта</h2>
+    <p class="help">Проверка работы расчётной формулы (версия {{ formula_version }}). Поддерживаемый контур v1: РФ, возраст 3–5 лет, мощность до 160 л.с.</p>
+    <form method="post" action="{{ url_for('admin_calculator') }}">
+      <div class="grid cols-2">
+        <div class="form-row">
+          <label for="country">Страна оформления
+            <span class="hint">Допустимо: РФ или Россия</span>
+          </label>
+          <input id="country" name="country" type="text" value="{{ form.country or 'РФ' }}" required />
+        </div>
+        <div class="form-row">
+          <label for="age_years">Возраст, лет
+            <span class="hint">3–5 лет включительно</span>
+          </label>
+          <input id="age_years" name="age_years" type="number" min="0" max="30" value="{{ form.age_years or 4 }}" required />
+        </div>
+        <div class="form-row">
+          <label for="power_hp">Мощность, л.с.
+            <span class="hint">До 160 включительно</span>
+          </label>
+          <input id="power_hp" name="power_hp" type="number" min="0" max="600" value="{{ form.power_hp or 150 }}" required />
+        </div>
+        <div class="form-row">
+          <label for="car_price_rub">Цена автомобиля, ₽</label>
+          <input id="car_price_rub" name="car_price_rub" type="number" min="0" step="0.01" value="{{ form.car_price_rub or '1000000' }}" required />
+        </div>
+        <div class="form-row">
+          <label for="extra_costs_rub">Расходы по стране покупки, ₽</label>
+          <input id="extra_costs_rub" name="extra_costs_rub" type="number" min="0" step="0.01" value="{{ form.extra_costs_rub or '0' }}" />
+        </div>
+        <div class="form-row">
+          <label for="export_cost_rub">Экспортные расходы, ₽</label>
+          <input id="export_cost_rub" name="export_cost_rub" type="number" min="0" step="0.01" value="{{ form.export_cost_rub or '10000' }}" />
+        </div>
+        <div class="form-row">
+          <label for="commission_rub">Комиссия, ₽</label>
+          <input id="commission_rub" name="commission_rub" type="number" min="0" step="0.01" value="{{ form.commission_rub or '50000' }}" />
+        </div>
+        <div class="form-row">
+          <label for="broker_rub">Брокер, ₽</label>
+          <input id="broker_rub" name="broker_rub" type="number" min="0" step="0.01" value="{{ form.broker_rub or '85000' }}" />
+        </div>
+        <div class="form-row">
+          <label for="customs_rub">Таможенные платежи, ₽</label>
+          <input id="customs_rub" name="customs_rub" type="number" min="0" step="0.01" value="{{ form.customs_rub or '300000' }}" />
+        </div>
+        <div class="form-row">
+          <label for="logistics_rub">Логистика, ₽</label>
+          <input id="logistics_rub" name="logistics_rub" type="number" min="0" step="0.01" value="{{ form.logistics_rub or '200000' }}" />
+        </div>
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="btn">Рассчитать</button>
+        <a href="{{ url_for('admin_calculator') }}" class="btn secondary">Сбросить</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Результат</h2>
+    {% if result %}
+      <div class="calc-summary">
+        <div class="muted" style="font-size: 0.85rem;">Версия формулы: {{ result.formula_version }}</div>
+        <div class="calc-total">Итого: {{ result.total_human }} ₽</div>
+      </div>
+      <ul class="calc-items">
+        {% for item in result.lines %}
+          <li><span>{{ item.title }}</span><span>{{ item.amount_human }} ₽</span></li>
+        {% endfor %}
+      </ul>
+    {% elif error %}
+      <div class="alert error">{{ error }}</div>
+    {% else %}
+      <div class="empty">Заполните параметры и нажмите «Рассчитать».</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

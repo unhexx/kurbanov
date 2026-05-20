@@ -36,6 +36,10 @@ uvicorn app.main:app --app-dir services/consultant_api --reload
 
 API поднимется на `http://localhost:8000`, swagger: `http://localhost:8000/docs`.
 
+Веб-интерфейс доступен по тем же адресам:
+- `http://localhost:8000/` — публичный портал (анкета подбора и калькулятор);
+- `http://localhost:8000/admin` — панель администратора (вход по `ADMIN_API_TOKEN`).
+
 ### 4) Инициализация БД (первый запуск)
 ```bash
 python services/consultant_api/scripts/init_db.py

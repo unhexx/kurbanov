@@ -1,0 +1,82 @@
+{% extends "_admin_layout.html" %}
+{% set active = 'users' %}
+{% block page_title %}Пользователи и роли{% endblock %}
+
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Роли</h2>
+    {% if roles %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Код</th><th>Название</th></tr></thead>
+        <tbody>
+          {% for r in roles %}
+            <tr><td><code>{{ r.code }}</code></td><td>{{ r.title }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">Ролей пока нет. Запустите seed-скрипт.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Добавить или обновить пользователя</h2>
+    <form method="post" action="{{ url_for('admin_users_save') }}">
+      <div class="form-row">
+        <label for="telegram_user_id">Telegram user id</label>
+        <input id="telegram_user_id" name="telegram_user_id" type="number" required />
+      </div>
+      <div class="form-row">
+        <label for="username">Имя пользователя
+          <span class="hint">Не обязательно</span>
+        </label>
+        <input id="username" name="username" type="text" />
+      </div>
+      <div class="form-row">
+        <label for="role_code">Роль</label>
+        <select id="role_code" name="role_code" required>
+          {% for r in roles %}
+            <option value="{{ r.code }}">{{ r.code }} — {{ r.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" name="is_active" value="1" checked /> Активен</label>
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="btn">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Пользователи</h2>
+  {% if users %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Telegram ID</th><th>Имя</th><th>Роль</th><th>Статус</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.telegram_user_id }}</td>
+            <td>{{ u.username or '—' }}</td>
+            <td>{{ u.role_code or '—' }}</td>
+            <td>
+              {% if u.is_active %}<span class="badge success">Активен</span>{% else %}<span class="badge danger">Заблокирован</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty">Пользователей пока нет.</div>
+  {% endif %}
+</div>
+{% endblock %}
