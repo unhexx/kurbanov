@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-
 from app.models import (
     FxRate,
     KnowledgeBaseDoc,
@@ -20,13 +19,13 @@ from app.models import (
     Setting,
     User,
 )
+from app.security import AdminAuth
 from app.services.calculator import (
     CalculatorInput,
     CalculatorScope,
     calculate_total_rub,
     validate_scope,
 )
-from app.security import AdminAuth
 from app.services.fx_rates import fetch_cbr_daily_xml, parse_cbr_daily_xml
 from app.settings import settings
 

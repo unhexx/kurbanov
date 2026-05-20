@@ -47,7 +47,12 @@ def test_webhook_idempotency_by_update_id():
         assert db.query(Message).count() == 1
         assert db.query(Lead).count() == 0
         assert db.query(Escalation).count() == 0
-        assert db.query(AuditEvent).filter(AuditEvent.event_type == "telegram.duplicate_ignored").count() == 1
+        assert (
+            db.query(AuditEvent)
+            .filter(AuditEvent.event_type == "telegram.duplicate_ignored")
+            .count()
+            == 1
+        )
     finally:
         db.close()
 
@@ -58,7 +63,12 @@ def test_webhook_idempotency_after_qualified_no_duplicate_escalation():
 
     db = SessionLocal()
     try:
-        conv = Conversation(chat_id=888, customer_telegram_user_id=222, state="qualified", data={"collected": {}})
+        conv = Conversation(
+            chat_id=888,
+            customer_telegram_user_id=222,
+            state="qualified",
+            data={"collected": {}},
+        )
         db.add(conv)
         db.commit()
     finally:
@@ -82,8 +92,18 @@ def test_webhook_idempotency_after_qualified_no_duplicate_escalation():
 
     db = SessionLocal()
     try:
-        assert db.query(Escalation).filter(Escalation.reason_code == "post_qualification_message").count() == 1
-        assert db.query(AuditEvent).filter(AuditEvent.event_type == "telegram.duplicate_ignored").count() == 1
+        assert (
+            db.query(Escalation)
+            .filter(Escalation.reason_code == "post_qualification_message")
+            .count()
+            == 1
+        )
+        assert (
+            db.query(AuditEvent)
+            .filter(AuditEvent.event_type == "telegram.duplicate_ignored")
+            .count()
+            == 1
+        )
     finally:
         db.close()
 
@@ -136,9 +156,19 @@ def test_webhook_idempotency_low_budget_no_duplicate_lead_escalation():
 
     db = SessionLocal()
     try:
-        assert db.query(Escalation).filter(Escalation.reason_code == "budget_below_threshold").count() == 1
+        assert (
+            db.query(Escalation)
+            .filter(Escalation.reason_code == "budget_below_threshold")
+            .count()
+            == 1
+        )
         assert db.query(Lead).filter(Lead.status == "budget_low").count() == 1
-        assert db.query(AuditEvent).filter(AuditEvent.event_type == "telegram.duplicate_ignored").count() == 1
+        assert (
+            db.query(AuditEvent)
+            .filter(AuditEvent.event_type == "telegram.duplicate_ignored")
+            .count()
+            == 1
+        )
     finally:
         db.close()
 
@@ -171,4 +201,3 @@ def test_webhook_secret_token_still_enforced_when_enabled():
         assert r2.json() == {"ok": True}
     finally:
         settings.telegram_webhook_secret_token = ""
-

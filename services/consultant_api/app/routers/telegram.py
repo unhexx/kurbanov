@@ -5,7 +5,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import AuditEvent, Conversation, Escalation, Lead, Message, TelegramUpdateDedup, User
+from app.models import (
+    AuditEvent,
+    Conversation,
+    Escalation,
+    Lead,
+    Message,
+    TelegramUpdateDedup,
+    User,
+)
 from app.services.dialog_engine import build_summary, next_missing_field, normalize_field_value
 from app.settings import settings
 from app.telegram_client import send_message
