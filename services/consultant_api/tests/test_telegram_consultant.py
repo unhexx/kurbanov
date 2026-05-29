@@ -387,6 +387,35 @@ def test_extract_json_in_messages_does_not_crash_on_unicode():
     for i, payload in enumerate(["😀эмодзи", "한국어 텍스트", "中文测试", '"кавычки"']):
         r = client.post("/telegram/webhook", json=_make_update(payload, update_id=30 + i))
         assert r.status_code == 200
+
+
+def test_non_standard_scope_with_price_question_forces_escalation():
+    """non_standard_scope (мощность >160) + вопрос про цену должен эскалировать жёстким правилом,
+    даже если модель вернула бы respond (B.3 edge-кейс)."""
+    _reset_db()
+    # Модель пытается ответить, но hard rule должен победить
+    stub = _StubConsultant(
+        ConsultantResult(action="respond", text="Могу предложить варианты.")
+    )
+    client = _client_with(stub)
+
+    # Мощность 250 л.с. + вопрос про цену
+    r = client.post(
+        "/telegram/webhook",
+        json=_make_update("BMW X5 2023 250 л.с., сколько под ключ в РФ?", update_id=40),
+    )
+    assert r.status_code == 200
+
+    db = SessionLocal()
+    try:
+        esc = db.query(Escalation).filter(Escalation.reason_code == "non_standard_scope").all()
+        assert len(esc) >= 1
+        # Не должно быть ответа от модели клиенту
+        out = db.query(Message).filter(Message.direction == "out").all()
+        texts = [ (m.text or "") for m in out ]
+        assert not any("Могу предложить" in t for t in texts)
+    finally:
+        db.close()
     # Проверим, что данные сериализуются
     db = SessionLocal()
     try:
