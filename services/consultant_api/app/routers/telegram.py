@@ -504,12 +504,16 @@ def telegram_webhook(
         finally:
             loop.close()
 
-    if result.action == "error":
+    if result.action == "error" or result.action == "escalate" and result.reason in ("timeout", "unknown_error", "malformed_response", "invalid_json", "invalid_action"):
+        # Усиленная обработка проблем модели (B.2)
+        logger.warning("Проблема с генерацией ответа консультанта: reason=%s", result.reason)
+
+        recent_messages = _recent_history(db, conv.id, limit=8)
         _audit(
             db,
             event_type="consultant.api_error",
             conv_id=conv.id,
-            payload={"reason": result.reason},
+            payload={"reason": result.reason, "messages_count": len(recent_messages)},
         )
         _do_escalate(
             db,
@@ -518,7 +522,12 @@ def telegram_webhook(
             reason="low_confidence",
             text=SERVICE_UNAVAILABLE_FALLBACK_TEXT,
             manager_note=f"consultant_api_error: {result.reason}",
-            extra_payload={"text": text, "api_reason": result.reason},
+            extra_payload={
+                "text": text,
+                "api_reason": result.reason,
+                "recent_messages": recent_messages,
+                "collected": (conv.data or {}).get("collected", {}),
+            },
         )
         return {"ok": True}
 
