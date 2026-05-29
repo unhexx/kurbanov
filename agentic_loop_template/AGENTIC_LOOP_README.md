@@ -1,7 +1,7 @@
-# Agentic Loop Template for MiniMax 2.5 + Blackbox (VSCode)
+# Agentic Loop Template for MiniMax M2.7 + Blackbox (VSCode)
 
-> Self-improving multi-role agentic development loop optimized for **Blackbox AI** in VSCode using the **MiniMax 2.5** model.
-> Version: 2.1 | Platform: Windows (PowerShell) | Primary Target: Blackbox + MiniMax 2.5
+> Self-improving multi-role agentic development loop optimized for **Blackbox AI** in VSCode using the **MiniMax M2.7** model.
+> Version: 2.2 (M2.7) | Platform: Windows (PowerShell) | Primary Target: Blackbox + MiniMax M2.7
 
 ---
 

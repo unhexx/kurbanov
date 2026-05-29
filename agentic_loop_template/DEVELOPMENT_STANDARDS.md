@@ -1,6 +1,6 @@
 # DEVELOPMENT STANDARDS
 
-This document defines the non-negotiable standards for all work performed in this project, especially when using the agentic development loop.
+This document defines the non-negotiable standards for all work performed in this project, especially when using the agentic development loop with MiniMax M2.7 (Blackbox).
 
 All roles (Orchestrator, Coder, Tester, Debugger, Reviewer) must follow these rules without exception.
 
@@ -38,6 +38,7 @@ When writing or modifying any source code:
 - No stubs or TODO comments that block the next role.
 - Prefer small, well-tested, incremental changes.
 - Every meaningful change must be committed before handing off to the next role.
+- Внутри каждой роли рекомендуется применять Solver Loop (Inspect → Define success → Smallest vertical slice → Verify with evidence → Reflect).
 
 ---
 
