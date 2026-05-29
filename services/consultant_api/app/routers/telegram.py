@@ -197,7 +197,8 @@ def _do_escalate(
     db.commit()
 
     send_message(chat_id, text)
-    _notify_manager(chat_id, conv, reason=reason, note=manager_note)
+    recent_msgs = extra_payload.get("recent_messages") if extra_payload else None
+    _notify_manager(chat_id, conv, reason=reason, note=manager_note, recent_messages=recent_msgs)
 
 
 def _do_respond(
@@ -573,6 +574,7 @@ def _notify_manager(
     reason: str | None = None,
     note: str = "",
     collected_override: dict | None = None,
+    recent_messages: list[dict[str, str]] | None = None,
 ) -> None:
     if not settings.telegram_manager_chat_id:
         return
@@ -584,6 +586,13 @@ def _notify_manager(
     if reason:
         header += f", причина: {reason}"
     body = header + ":\n" + summary
+
+    if recent_messages:
+        body += "\n\nПоследние сообщения:\n"
+        for msg in recent_messages[-4:]:  # последние 4 для компактности
+            role = "Клиент" if msg.get("role") == "user" else "Бот"
+            body += f"- {role}: {msg.get('content', '')[:200]}\n"
+
     if note:
         body += f"\n---\n{note}"
     send_message(int(settings.telegram_manager_chat_id), body)
