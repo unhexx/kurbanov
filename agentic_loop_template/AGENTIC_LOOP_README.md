@@ -7,7 +7,7 @@
 
 ## What This Is
 
-A complete, production-oriented template for running a closed-loop, self-improving agentic development cycle where **MiniMax 2.5** (via Blackbox) sequentially takes on the roles of:
+A complete, production-oriented template for running a closed-loop, self-improving agentic development cycle where **MiniMax M2.7** (via Blackbox) sequentially takes on the roles of:
 
 **Orchestrator → Coder → Tester → Debugger → Reviewer**
 
@@ -26,7 +26,7 @@ The agent works iteratively until the task fully meets the specification.
 
 ```
 agentic_loop_template/
-├── README.md                          # This file (Blackbox + MiniMax 2.5 focused)
+├── README.md                          # This file (Blackbox + MiniMax M2.7 focused)
 ├── SYSTEM_PROMPT.md                   # Main system prompt (fill {{placeholders}})
 ├── AGENT_ROLES.md                     # Detailed instructions for each role
 ├── HANDOFF_SCHEMA.md                  # JSON handoff contract between roles
@@ -35,13 +35,13 @@ agentic_loop_template/
 ├── SPRINTPLAN_TEMPLATE.md             # Template for SPRINTPLAN.md
 ├── setup_env.ps1                      # Robust Python venv + requirements bootstrap
 ├── Agent-Init.ps1                     # One-command setup for Blackbox + VSCode
-├── Agent-Init.md                      # Detailed Blackbox + MiniMax 2.5 launch guide
+├── Agent-Init.md                      # Detailed Blackbox + MiniMax M2.7 launch guide
 └── Profile-Bootstrap.ps1              # PowerShell profile helper for non-interactive sessions
 ```
 
 ---
 
-## Quick Start (Blackbox + MiniMax 2.5 in VSCode)
+## Quick Start (Blackbox + MiniMax M2.7 in VSCode)
 
 ### 1. One-time environment preparation
 
@@ -59,7 +59,7 @@ This script will:
 
 ### 2. Recommended Blackbox Configuration
 
-**Model**: MiniMax 2.5 (or the highest quality available model)
+**Model**: MiniMax M2.7 (or the highest quality available model)
 
 **Custom Instructions** (add to Blackbox settings):
 
@@ -105,7 +105,7 @@ Inside each role the agent follows:
 
 ---
 
-## Important Rules for Blackbox + MiniMax 2.5
+## Important Rules for Blackbox + MiniMax M2.7
 
 - **Commits must be in Russian** and sound like they were written by a real developer.
 - **Never mention** AI, agent, LLM, MiniMax, etc. in commit messages.
@@ -114,7 +114,7 @@ Inside each role the agent follows:
 
 ---
 
-## Recommended Model Settings (MiniMax 2.5)
+## Recommended Model Settings (MiniMax M2.7)
 
 | Role          | Temperature | Top-P | Max Tokens |
 |---------------|-------------|-------|------------|
@@ -156,8 +156,8 @@ For maximum automation you can combine it with opening the file:
 
 ## Limitations
 
-- Optimized for Windows + PowerShell + Blackbox + MiniMax 2.5.
+- Optimized for Windows + PowerShell + Blackbox + MiniMax M2.7.
 - The local runner must support the tools defined in `TOOLS_REGISTRY.md`.
 - Maximum recommended 3–4 full cycles before doing an architecture review.
 
-This template is specifically tuned for reliable autonomous development when using **Blackbox AI** with the **MiniMax 2.5** model in Visual Studio Code.
+This template is specifically tuned for reliable autonomous development when using **Blackbox AI** with the **MiniMax M2.7** model in Visual Studio Code.
