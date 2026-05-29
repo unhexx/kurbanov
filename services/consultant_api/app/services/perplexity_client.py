@@ -134,7 +134,7 @@ class PerplexityClient:
 
         if not self._api_key:
             logger.warning("perplexity_client: api_key is not configured")
-            return ConsultantResult(action="error", reason="not_configured")
+            return ConsultantResult(action="escalate", reason="not_configured")
 
         messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
         for item in history:
@@ -197,7 +197,7 @@ class PerplexityClient:
             if attempt < attempts:
                 await asyncio.sleep(min(2 ** (attempt - 1) * 0.5, 4.0))
 
-        return ConsultantResult(action="error", reason=last_error or "unknown")
+        return ConsultantResult(action="escalate", reason=last_error or "unknown_error")
 
     async def _do_request(
         self, *, url: str, headers: dict[str, str], payload: dict[str, Any]
@@ -219,7 +219,7 @@ class PerplexityClient:
             content = choice["message"]["content"]
         except (KeyError, IndexError, TypeError):
             logger.warning("perplexity_client: malformed response shape")
-            return ConsultantResult(action="error", reason="malformed_response", raw=data)
+            return ConsultantResult(action="escalate", reason="malformed_response", raw=data)
 
         citations: list[str] = []
         if isinstance(data.get("citations"), list):
@@ -229,7 +229,7 @@ class PerplexityClient:
         if not parsed:
             logger.warning("perplexity_client: cannot parse JSON action from content")
             return ConsultantResult(
-                action="error",
+                action="escalate",
                 reason="invalid_json",
                 text=(content or "").strip(),
                 raw=data,
@@ -238,7 +238,7 @@ class PerplexityClient:
         action = str(parsed.get("action") or "").strip().lower()
         if action not in {"respond", "escalate"}:
             return ConsultantResult(
-                action="error",
+                action="escalate",
                 reason="invalid_action",
                 text=str(parsed.get("text") or "").strip(),
                 raw=data,

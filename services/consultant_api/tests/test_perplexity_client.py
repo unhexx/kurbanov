@@ -87,7 +87,7 @@ async def test_perplexity_client_escalate_action_with_citations():
 
 
 @pytest.mark.asyncio
-async def test_perplexity_client_timeout_returns_error(monkeypatch):
+async def test_perplexity_client_timeout_returns_escalate(monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.TimeoutException("timeout")
 
@@ -99,7 +99,7 @@ async def test_perplexity_client_timeout_returns_error(monkeypatch):
         monkeypatch.setattr("app.services.perplexity_client.asyncio.sleep", _noop_sleep)
         result = await client.generate(system_prompt="sys", history=[], user_text="x")
 
-    assert result.action == "error"
+    assert result.action == "escalate"
     assert result.reason == "timeout"
 
 
@@ -115,7 +115,7 @@ async def test_perplexity_client_http_4xx_no_retry():
         client = PerplexityClient(api_key="test", http_client=http_client, max_retries=3)
         result = await client.generate(system_prompt="sys", history=[], user_text="x")
 
-    assert result.action == "error"
+    assert result.action == "escalate"
     assert result.reason == "http_400"
     assert calls["n"] == 1
 
@@ -130,16 +130,35 @@ async def test_perplexity_client_malformed_json_in_content():
         client = PerplexityClient(api_key="test", http_client=http_client)
         result = await client.generate(system_prompt="sys", history=[], user_text="x")
 
-    assert result.action == "error"
+    assert result.action == "escalate"
     assert result.reason == "invalid_json"
 
 
 @pytest.mark.asyncio
-async def test_perplexity_client_not_configured_returns_error():
+async def test_perplexity_client_not_configured_returns_escalate():
     client = PerplexityClient(api_key="")
     result = await client.generate(system_prompt="sys", history=[], user_text="x")
-    assert result.action == "error"
+    assert result.action == "escalate"
     assert result.reason == "not_configured"
+
+
+@pytest.mark.asyncio
+async def test_perplexity_client_http_429_returns_escalate():
+    """Rate limit должен приводить к escalate с понятным reason (B.1 requirement)."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(429, json={"error": "rate limited"})
+
+    async with httpx.AsyncClient(transport=_mock_transport(handler)) as http_client:
+        client = PerplexityClient(api_key="test", http_client=http_client, max_retries=1)
+        result = await client.generate(system_prompt="sys", history=[], user_text="x")
+
+    assert result.action == "escalate"
+    assert result.reason == "http_429"
+    # 429 ретраится (в отличие от других 4xx), поэтому 2 вызова при max_retries=1
+    assert calls["n"] == 2
 
 
 def test_build_consultant_system_prompt_includes_collected_and_pending():
