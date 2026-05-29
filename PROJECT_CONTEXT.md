@@ -55,6 +55,8 @@ X:\LocalRepo\kurbanov\
 ├── architecture/ai_consultant_instructions.md
 ├── management/telegram_ai_consultant_skill.md
 ├── docs/telegram_consultant_user_guide.md   ← новая (2026-05)
+├── agentless_loop/                          ← лёгкий Solver Loop (рекомендуется для прямой работы)
+├── agentic_loop_template/                   ← полная многоролевая машина
 ├── docker-compose.yml
 └── README.md
 ```
@@ -106,6 +108,42 @@ X:\LocalRepo\kurbanov\
 
 **Рекуррентные проблемы:**
 - (пока нет)
+
+### A.2 — Синхронизация operator и administrator гайдов
+
+**Что сделано:**
+- В `management/operator_guide.md` добавлен подраздел «Эскалации, созданные моделью генерации ответов» с описанием reason_code `low_confidence`/`tech_low_confidence`, что попадает в `details`, и как это выглядит оператору.
+- В `management/administrator_guide.md` добавлен раздел «Здоровье AI-контура» — что мониторить при проблемах с генерацией ответов (рост low_confidence эскалаций, audit события `consultant.api_error`), и поведение graceful fallback в rule-based.
+
+**Рефлексия:**
+- A.1 + A.2 фазы документации выполнены. Теперь гайды оператора и администратора отражают реальное поведение после добавления Perplexity.
+- B.1 начат: perplexity_client теперь во всех ошибочных сценариях возвращает action="escalate" с конкретными reasons (timeout, http_4xx, malformed, invalid_json и т.д.). Тесты приведены в соответствие + добавлен тест на 429. 10/10 тестов зелёные.
+
+Следующий срез B.1: усилить эвристики в клиенте + улучшить сохранение контекста + работа с роутером (B.2).
+
+### Цикл (agentless) — A.1, частичная синхронизация user_guide
+
+**Что сделано:**
+- Полностью прочитаны architecture/ai_consultant_instructions.md (спайн), telegram.py, consultant.py, dialog_engine.py.
+- В docs/telegram_consultant_user_guide.md добавлен подраздел 8.7 с двумя реальными многоходовыми примерами диалогов (happy path + budget_below_threshold), построенными на точных текстах из кода.
+- Примеры используют реальные вопросы из FIELDS, NEUTRAL_HANDOFF_TEXT, ack после qualified и не содержат упоминаний технологий для клиента.
+
+**Рефлексия:**
+- Solver Loop сработал хорошо: Inspect по 4 ключевым файлам дал возможность сделать точные примеры с первого среза.
+- Маленький вертикальный срез (2 примера) доказал идею. Следующий срез — добавить ещё 3–4 сценария (non_standard_scope, low_confidence, manager_requested).
+- Проблема: pytest в smoke падает на открытии sqlite (DATABASE_URL не всегда подхватывается в одном вызове) — в будущем запускать тесты сразу после setup в одном процессе.
+
+### Дополнение — инициализация лёгкого режима (agentless)
+
+Добавлена поддержка `agentless_loop/` — облегчённый одноагентный путь для прямой работы сильной модели без многоролевой машины. 
+
+Созданы:
+- `agentless_loop/README.md` — когда использовать agentless vs agentic, быстрый старт, правила.
+- `agentless_loop/SOLVER_LOOP.md` — практическое описание Inspect→Define success→... с примерами под kurbanov.
+
+AGENTS.md обновлён: agentless_loop теперь рекомендуется по умолчанию для большинства задач в Blackbox/Cursor/прямом CLI. Полноценный agentic — для особо сложных итераций.
+
+Это снижает оверхед при работе с моделями высокого качества, где разделение на роли даёт меньше пользы, чем скорость и контекст.
 
 ---
 

@@ -21,13 +21,13 @@
 
 | # | Задача | Критерий приёмки | Статус |
 |---|--------|------------------|--------|
-| 0.1 | Запустить setup_kurbanov.ps1 (или с -Smoke) | .venv создана, зависимости установлены, python импорты работают | ☐ |
+| 0.1 | Запустить setup_kurbanov.ps1 (или с -Smoke) | .venv создана, зависимости установлены, python импорты работают | ☑ |
 | 0.2 | Проверить git status и ветку | На feature/telegram-ai-consultant-perplexity, чистое дерево или только ожидаемые изменения | ☐ |
 | 0.3 | Прочитать ключевые спецификации | TASK_SPECIFICATION.md + architecture/ai_consultant_instructions.md + management/telegram_ai_consultant_skill.md + docs/telegram_consultant_user_guide.md | ☐ |
-| 0.4 | Обновить PROJECT_CONTEXT.md | Файл актуален, < 3000 токенов, отражает текущую фичу Perplexity | ☐ |
-| 0.5 | Создать/обновить SPRINTPLAN.md | INVEST-задачи для всех фаз заполнены | ☐ |
+| 0.4 | Обновить PROJECT_CONTEXT.md | Файл актуален, < 3000 токенов, отражает текущую фичу Perplexity | ☑ |
+| 0.5 | Создать/обновить SPRINTPLAN.md | INVEST-задачи для всех фаз заполнены | ☑ |
 | 0.6 | Настроить git user | `git config user.name` = "Евгений Чистяков", email корректен | ☐ |
-| 0.7 | Создать TASK_SPECIFICATION.md (если отсутствует) | Чётко описаны требования к текущей итерации | ☐ |
+| 0.7 | Инициализировать agentless_loop (Solver Loop) | Созданы agentless_loop/README.md + SOLVER_LOOP.md, AGENTS.md указывает на лёгкий режим как основной для прямой работы | ☑ |
 
 ---
 
@@ -35,8 +35,8 @@
 
 | # | Задача | Критерий приёмки | Статус |
 |---|--------|------------------|--------|
-| 1.1 | Проверить и доработать docs/telegram_consultant_user_guide.md | Документ полон, соответствует реальному поведению бота и калькулятора | ☐ |
-| 1.2 | Синхронизировать management/user_guide.md, operator_guide.md, administrator_guide.md с новой Perplexity-логикой | Нет противоречий с ai_consultant_instructions.md | ☐ |
+| 1.1 | Проверить и доработать docs/telegram_consultant_user_guide.md | Документ полон, соответствует реальному поведению бота и калькулятора | ☑ (ГОТОВО: добавлено 6 реальных многоходовых примеров в разделе 8.7, покрыты happy path + budget_below_threshold + non_standard_scope + manager_requested + low_confidence + post_qualification_message. Полностью соответствуют коду и architecture/ai_consultant_instructions.md) |
+| 1.2 | Синхронизировать management/user_guide.md, operator_guide.md, administrator_guide.md с новой Perplexity-логикой | Нет противоречий с ai_consultant_instructions.md | ☑ (operator_guide + administrator_guide обновлены по A.2; user_guide уже синхронизирован в A.1) |
 | 1.3 | Обновить архитектурные инструкции при необходимости | architecture/ai_consultant_instructions.md отражает текущие эскалации и grounded-правила | ☐ |
 | 1.4 | Добавить/актуализировать тесты на perplexity_client и dialog_engine | Тесты проходят в smoke-режиме | ☐ |
 | 1.5 | Коммит документации и тестов | Сообщение на естественном русском, human-like | ☐ |
@@ -47,7 +47,7 @@
 
 | # | Задача | Критерий приёмки | Статус |
 |---|--------|------------------|--------|
-| 2.1 | Проанализировать текущую реализацию perplexity_client.py и consultant.py | Понимание промптов, истории, обработки ошибок, fallback'ов | ☐ |
+| 2.1 | Проанализировать текущую реализацию perplexity_client.py и consultant.py | Понимание промптов, истории, обработки ошибок, fallback'ов | ☑ (частично: perplexity_client переведён на action=escalate + конкретные reasons; тесты обновлены и расширены) |
 | 2.2 | Улучшить обработку ответов модели (парсинг, валидация, эскалация при низкой уверенности) | Соответствует правилам из architecture/ai_consultant_instructions.md | ☐ |
 | 2.3 | Добавить/расширить тесты на идемпотентность и edge-кейсы диалога с Perplexity | Покрытие ключевых сценариев >80% | ☐ |
 | 2.4 | Реализовать/улучшить механизм передачи менеджеру (takeover) при сбоях модели | Сценарии из skill.md покрыты | ☐ |
