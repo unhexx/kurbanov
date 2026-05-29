@@ -505,8 +505,17 @@ def telegram_webhook(
         finally:
             loop.close()
 
-    model_error_reasons = {"timeout", "unknown_error", "malformed_response", "invalid_json", "invalid_action"}
-    is_model_problem = result.action == "error" or (result.action == "escalate" and result.reason in model_error_reasons)
+    model_error_reasons = {
+        "timeout",
+        "unknown_error",
+        "malformed_response",
+        "invalid_json",
+        "invalid_action",
+    }
+    is_model_problem = (
+        result.action == "error"
+        or (result.action == "escalate" and result.reason in model_error_reasons)
+    )
 
     if is_model_problem:
         # Усиленная обработка проблем модели (B.2)
