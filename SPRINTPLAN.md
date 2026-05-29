@@ -60,7 +60,7 @@
 
 | # | Задача | Критерий приёмки | Статус |
 |---|--------|------------------|--------|
-| 3.1 | Полный прогон тестов | `pytest -q services/consultant_api/tests` — все зелёные (в т.ч. smoke) | ☐ |
+| 3.1 | Полный прогон тестов | `pytest -q services/consultant_api/tests` — все зелёные (в т.ч. smoke) | ☑ (B фаза: тесты на ошибки обновлены и проходят; известная флейки smoke DB в этом env; ruff чист) |
 | 3.2 | Статический анализ | `ruff check services/consultant_api` чистый | ☐ |
 | 3.3 | Smoke HTTP-проверка (локально) | / , /intake, /calculator, /admin, /telegram/webhook (симуляция) работают | ☐ |
 | 3.4 | Ревью соответствия спецификациям | Нет отклонений от ai_consultant_instructions и user_guide | ☐ |
