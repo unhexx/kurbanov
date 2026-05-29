@@ -1,15 +1,16 @@
 ﻿<#
 .SYNOPSIS
-    Robust initialization script for Blackbox + MiniMax2.5 agentic development in VSCode.
+    Robust initialization script for Blackbox + MiniMax M2.7 agentic development in VSCode.
 
 .DESCRIPTION
     Prepares a reliable local Python virtual environment and can generate
-    a ready-to-use starter prompt for Blackbox.
+    a ready-to-use starter prompt for Blackbox (optimized for MiniMax M2.7).
 
     Key improvements:
     - Automatically creates or repairs broken .venv
     - Clear, step-by-step messages with status
     - Auto-detects task from TODO.md or TASK_SPECIFICATION.md
+    - Generates M2.7-aware starter prompt with thinking traces / curated context reminders
 #>
 
 [CmdletBinding()]
@@ -78,11 +79,17 @@ function Generate-AgentStarterPrompt {
         "",
         "3. Read in this order:",
         "   - agentic_loop_template/README.md",
-        "   - agentic_loop_template/SYSTEM_PROMPT.md",
+        "   - agentic_loop_template/SYSTEM_PROMPT.md (M2.7 tuned version)",
         "   - agentic_loop_template/Agent-Init.md",
         "   - $SpecFile",
         "",
         "4. Start as ORCHESTRATOR according to the SYSTEM_PROMPT.",
+        "",
+        "**M2.7 Best Practices (use these when working with MiniMax M2.7 in Blackbox):**",
+        "- Сохраняй thinking traces модели (<think>...</think> или эквивалент), если они выдаются — они сильно улучшают качество длинных итераций.",
+        "- Для истории контекста используй curated summary: последние 8-12 сообщений + сжатые итоги предыдущих фаз (что сделано, какие решения приняты, открытые риски). Не заливай сырую историю.",
+        "- Следуй таблице рекомендуемых параметров генерации из SYSTEM_PROMPT.md (разные temperature/top-p/top-k для разных ролей).",
+        "- Внутри каждой роли применяй Solver Loop (Inspect → Define success → Smallest vertical slice → Proportional verification → Reflect). Максимум 3 tool-вызова без рефлексии.",
         "",
         "Rules:",
         "- Write all git commits in natural Russian, as a real human developer (Евгений Чистяков style).",

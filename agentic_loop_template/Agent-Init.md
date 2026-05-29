@@ -1,6 +1,6 @@
-# Agent Init for Blackbox + MiniMax2.5 in VSCode
+# Agent Init for Blackbox + MiniMax M2.7 in VSCode
 
-This guide helps you (or your agent) correctly bootstrap the **agentic_loop_template** when working inside **Visual Studio Code + Blackbox AI agent** using **MiniMax2.5**.
+This guide helps you (or your agent) correctly bootstrap the **agentic_loop_template** when working inside **Visual Studio Code + Blackbox AI agent** using **MiniMax M2.7**.
 
 ## Why This File Exists
 
@@ -36,7 +36,7 @@ This script will:
 
 ## Step 2: Recommended Blackbox Custom Instructions
 
-Before the agent starts, make sure it has the latest `SYSTEM_PROMPT.md` (version 2.1) which contains the **Pre-Flight Checklist**. The agent must verify that all placeholders are filled before beginning any work.
+Before the agent starts, make sure it has the latest `SYSTEM_PROMPT.md` (M2.7 tuned version) which contains the **Pre-Flight Checklist**, Solver Loop description, and M2.7 Context Management recommendations. The agent must verify that all placeholders are filled before beginning any work.
 
 Go to Blackbox settings → Custom Instructions (or System Prompt) and add the following block:
 
@@ -46,43 +46,50 @@ You are working on the kurbanov project (MVP Telegram AI Consultant for car sele
 CRITICAL RULES:
 
 1. Always start a new task by ensuring the local Python environment is ready:
-   powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1
+   powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\setup_kurbanov.ps1
 
 2. Never run Python commands outside the activated .venv. Always activate it first if needed:
    . .\.venv\Scripts\Activate.ps1
+   $env:PYTHONPATH = 'services\consultant_api'
 
 3. For shell commands that use chaining, prefer using the posh-bash-chaining functions or run commands via the bootstrap.
 
-4. All git commit messages MUST be written in natural Russian, as a real human mid/senior developer. Never mention AI, LLM, agent, MiniMax, Grok, or "as an assistant" in commits.
+4. All git commit messages MUST be written in natural Russian, as a real human mid/senior developer (Евгений Чистяков style). Never mention AI, LLM, agent, MiniMax, Grok, Claude, etc. in commits.
 
-5. Work iteratively with small, well-tested changes. Run tests frequently.
+5. Work iteratively with small, well-tested changes. Run tests frequently. Maximum 3 tool calls without explicit reflection inside a role.
 
-6. When the task is complex, follow the structure from agentic_loop_template/SYSTEM_PROMPT.md (Orchestrator → Coder → Tester → Debugger → Reviewer).
+6. Follow M2.7 best practices from SYSTEM_PROMPT.md:
+   - Сохраняй thinking traces (<think>...</think>), если модель их выдаёт.
+   - Используй curated summaries вместо сырого дампа истории.
+   - Применяй Solver Loop внутри ролей.
 
-7. Always read TASK_SPECIFICATION.md (or equivalent) before starting implementation.
+7. When the task is complex, follow the full multi-role structure from agentic_loop_template/SYSTEM_PROMPT.md (Orchestrator → Coder → Tester → Debugger → Reviewer). Для большинства задач в Blackbox используй лёгкий Solver Loop из корневого AGENTS.md + agentless_loop/.
+
+8. Always read TASK_SPECIFICATION.md (or TODO.md) before starting implementation.
 ```
 
 ---
 
 ## Step 3: First Message to the Agent (Copy-Paste)
 
-Use this as the first message when starting a new autonomous development session:
+Use this as the first message when starting a new autonomous development session (or let Agent-Init.ps1 generate an even better version with the current task description):
 
 ```
-We are using the Agentic Loop Template located in agentic_loop_template/.
+We are starting an autonomous agentic development loop using the template in agentic_loop_template/ for the kurbanov project.
 
-Please read the following files in order:
-1. agentic_loop_template/README.md
-2. agentic_loop_template/SYSTEM_PROMPT.md
-3. agentic_loop_template/Agent-Init.md
+**Instructions:**
+1. First run: powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\setup_kurbanov.ps1
+2. Activate venv + set PYTHONPATH
+3. Read (in order):
+   - agentic_loop_template/README.md
+   - agentic_loop_template/SYSTEM_PROMPT.md (M2.7 tuned)
+   - agentic_loop_template/Agent-Init.md
+   - TASK_SPECIFICATION.md (or TODO.md)
+4. Start as ORCHESTRATOR.
 
-Then:
-- Run the environment initialization: powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1
-- Activate the venv
-- Read the main task specification (TASK_SPECIFICATION.md or equivalent)
-- Start acting as ORCHESTRATOR and begin the agentic loop.
+M2.7 Best Practices: сохраняй thinking traces, используй curated summaries, применяй Solver Loop внутри ролей (max 3 tool calls без рефлексии).
 
-Use natural Russian developer-style commit messages only.
+All git commits — natural Russian, real mid/senior developer style (Евгений Чистяков). Never mention AI/LLM/agent/MiniMax in commits.
 ```
 
 ---
@@ -95,7 +102,7 @@ Use natural Russian developer-style commit messages only.
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
   ```
 - **Terminal**: Use the integrated terminal (not external).
-- **Model**: MiniMax2.5 (or the closest available high-quality model)
+- **Model**: MiniMax M2.7 (or the closest available high-quality model)
 - **Temperature**: 0.0 – 0.2 for planning and review roles (let the agent manage this via instructions)
 
 ---
@@ -189,9 +196,9 @@ When starting a serious autonomous session, give the agent access to read:
 - `TASK_SPECIFICATION.md` (your actual task spec)
 - `pyproject.toml`
 
-This combination gives the agent enough context to work autonomously and correctly with Blackbox + MiniMax2.5 in VSCode.
+This combination gives the agent enough context to work autonomously and correctly with Blackbox + MiniMax M2.7 in VSCode.
 
 ---
 
 **Last updated:** 2026-05-28  
-**Compatible with:** Blackbox AI in VSCode + MiniMax2.5 + Windows PowerShell
+**Compatible with:** Blackbox AI in VSCode + MiniMax M2.7 + Windows PowerShell
