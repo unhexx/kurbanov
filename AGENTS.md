@@ -12,6 +12,11 @@
 
 Максимум 3 инструмента/вызова без рефлексии внутри роли.
 
+## Два режима работы
+
+- **Agentless (рекомендуется для большинства задач)**: одна сильная модель следует Solver Loop напрямую. Лёгкий оверхед, быстрые итерации. Поддержка в `agentless_loop/`. Используй по умолчанию в этом CLI и Cursor.
+- **Agentic (полноценный)**: многоролевая машина (Orchestrator → Coder → Tester → Reviewer). Больше проверок, больше артефактов. Шаблон в `agentic_loop_template/`. Подключай при высокой сложности или когда нужно жёсткое разделение ответственности.
+
 ## Важные технические рекомендации
 
 - При работе с моделями, поддерживающими reasoning traces, сохраняй их в истории контекста — это значительно повышает качество длинных итераций.
@@ -31,11 +36,12 @@
 
 - `TASK_SPECIFICATION.md`
 - `architecture/ai_consultant_instructions.md` (главный источник правды по поведению Telegram-консультанта)
-- `agentic_loop_template/DEVELOPMENT_STANDARDS.md`
-- `agentic_loop_template/HANDOFF_SCHEMA.md`
 - `TODO.md` (текущие задачи фазы)
+- `agentless_loop/README.md` — основной гид по лёгкому одноагентному режиму (Solver Loop) для прямой работы в этом CLI, Blackbox, Cursor
+- `agentless_loop/SOLVER_LOOP.md` — детальное описание паттерна Inspect → Define success → ... с примерами для kurbanov
+- `agentic_loop_template/` — тяжёлая многоролевая машина (используй, когда нужен Orchestrator + Coder + Reviewer с JSON-хandoff)
 
-При работе в Blackbox/Cursor — используй эти правила как Custom Instructions / Rules.
+При работе в Blackbox/Cursor/этом CLI — используй AGENTS.md + agentless_loop/ как Custom Instructions / Rules. Для сложных задач подключай agentic_loop_template.
 
 ---
 
