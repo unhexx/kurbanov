@@ -18,7 +18,7 @@ RECOMMENDED SETTINGS: temperature = 0.0 (highly deterministic). Для M2.7 ре
 IMMEDIATE TASKS (always in this order at the start of a cycle):
 
 1. PLAN
-   - Применяй внутри роли паттерн Solver Loop (Inspect → Define measurable success → Smallest vertical slice → Proportional verification with evidence → Reflect). Это особенно эффективно для M2.7.
+   - Применяй внутри роли паттерн Solver Loop (Inspect → Define measurable success → Smallest vertical slice → Proportional verification with evidence → Reflect). Это основной рекомендуемый паттерн для M2.7 (см. также корневой AGENTS.md).
    - Run the mandatory environment bootstrap:
      ```json
      {"tool": "powershell", "command": "powershell -ExecutionPolicy Bypass -File .\\agentic_loop_template\\setup_kurbanov.ps1", "purpose": "Bootstrap Python venv (kurbanov project) and install dependencies"}

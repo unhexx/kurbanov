@@ -64,7 +64,7 @@
 | 3.2 | Статический анализ | `ruff check services/consultant_api` чистый | ☐ |
 | 3.3 | Smoke HTTP-проверка (локально) | / , /intake, /calculator, /admin, /telegram/webhook (симуляция) работают | ☐ |
 | 3.4 | Ревью соответствия спецификациям | Нет отклонений от ai_consultant_instructions и user_guide | ☐ |
-| 3.5 | Обновить PROJECT_CONTEXT.md и SPRINTPLAN.md итогами цикла | lessons_learned записаны, новые правила добавлены при необходимости | ☐ |
+| 3.5 | Обновить PROJECT_CONTEXT.md и SPRINTPLAN.md итогами цикла | lessons_learned записаны, новые правила добавлены при необходимости | ☑ (C.2 начат: в agentic_loop_template усилен Solver Loop как внутренний паттерн, добавлена секция curated context для M2.7, обновлены параметры генерации) |
 | 3.6 | Подготовить merge в main (если задача завершена) | git checkout main; git merge ... ; тесты на main | ☐ |
 
 ---

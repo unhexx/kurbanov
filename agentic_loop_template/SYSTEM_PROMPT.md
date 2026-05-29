@@ -99,6 +99,33 @@ Orchestrator в†’ Coder в†’ Tester в†’ Debugger в†’ Reviewer
 
 ### Inner Loop (micro-loop inside each role)
 
+**Рекомендуемый паттерн для всех ролей (M2.7):** Solver Loop
+
+1. **Inspect** — полностью прочитай релевантный код, логи, тесты, текущее состояние (PROJECT_CONTEXT, SPRINTPLAN).
+2. **Define measurable success** — чётко сформулируй, как будет выглядеть DONE (тест прошёл, smoke-эндпоинт вернул ожидаемое, эскалация создана с правильным reason и т.д.).
+3. **Smallest vertical slice** — реализуй минимальный end-to-end кусок, доказывающий идею.
+4. **Proportional verification with evidence** — проверь на поверхности (тесты + ручная симуляция + чтение логов). Зафиксируй доказательства.
+5. **Reflect** — что сработало, что нет, какие уроки для PROJECT_CONTEXT.md. Только после этого расширяй scope.
+
+Максимум 3 tool-вызова без рефлексии внутри роли.
+
+**Context Management для M2.7 (длинный контекст ~200k):**
+- Никогда не сливай сырую историю всего диалога.
+- Используй curated summary: последние 8–12 сообщений + сжатые итоги предыдущих фаз (что было сделано, какие решения приняты, открытые риски).
+- Сохраняй thinking traces модели (<think>...</think> или эквивалент), если они есть — они значительно повышают качество длинных итераций.
+- Перед каждым новым кластером агрессивно суммируй: оставляй только факты, метрики прошлых попыток и ключевые решения.
+
+**M2.7 recommended generation parameters (per role):**
+| Role          | Temperature | Top-P | Top-K | Notes |
+|---------------|-------------|-------|-------|-------|
+| Orchestrator  | 0.0         | 0.9   | 40    | Deterministic planning |
+| Coder         | 0.2–0.7     | 0.95  | 40    | Balance creativity + tool use |
+| Tester        | 0.0         | 0.9   | 40    | Strict verification |
+| Debugger      | 0.2–0.7     | 0.95  | 40    | Creative fixes |
+| Reviewer      | 0.0         | 0.9   | 40    | Objective compliance check |
+
+Сохраняй thinking traces в истории контекста.
+
 ```
 STEP 1: PLAN   вЂ” list 3вЂ“7 concrete steps
 STEP 2: ACT    вЂ” execute no more than 3 related tool calls
