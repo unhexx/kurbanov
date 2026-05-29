@@ -159,6 +159,40 @@ curl -fsS http://127.0.0.1:18000/docs
 curl -fsS http://127.0.0.1:18000/admin/health
 ```
 
+## Agentic Development Loop (окружение для автономной разработки)
+
+В репозитории настроено **agentic_loop_template/** — адаптированное окружение для закрытого self-improving цикла разработки с использованием Blackbox + MiniMax 2.5 (или аналогичных моделей).
+
+**Основные файлы:**
+- `agentic_loop_template/setup_kurbanov.ps1` — основной скрипт подготовки окружения под структуру проекта (зависимости из `services/consultant_api/`, поддержка `-Smoke` для SQLite без Docker).
+- `agentic_loop_template/SYSTEM_PROMPT.md` — системный промпт с заполненными плейсхолдерами под kurbanov.
+- `TASK_SPECIFICATION.md`, `PROJECT_CONTEXT.md`, `SPRINTPLAN.md` — текущий контекст и план для агента.
+
+**Быстрый старт окружения (PowerShell):**
+```powershell
+cd X:\LocalRepo\kurbanov
+powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\setup_kurbanov.ps1
+# или для быстрого smoke-режима без PostgreSQL:
+powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\setup_kurbanov.ps1 -Smoke
+```
+
+После запуска:
+- Активируй: `. .\.venv\Scripts\Activate.ps1`
+- Установи PYTHONPATH: `$env:PYTHONPATH = 'services\consultant_api'`
+
+**Для Blackbox / MiniMax 2.5:**
+1. Запусти `.\agentic_loop_template\Agent-Init.ps1` (он подготовит окружение и сгенерирует стартовый промпт).
+2. Добавь в Custom Instructions Blackbox правила из `agentic_loop_template/Agent-Init.md`.
+3. Отправь содержимое `agentic_loop_template/SYSTEM_PROMPT.md` как системный промпт.
+
+**Важные правила цикла:**
+- Все git-коммиты — только на естественном русском, голос реального разработчика (Евгений Чистяков).
+- Запрещено упоминать AI/LLM/агент/MiniMax/Grok в коммитах и комментариях к коду.
+- Orchestrator всегда начинает цикл с вызова `setup_kurbanov.ps1`.
+- Детали — в `agentic_loop_template/AGENTIC_LOOP_README.md` и `SYSTEM_PROMPT.md`.
+
+Это позволяет вести разработку (в т.ч. доработки Telegram-консультанта и Perplexity-интеграции) в полностью автономном режиме с самосовершенствованием.
+
 ## Структура сервиса
 
 - `app/main.py` - сборка FastAPI-приложения;
