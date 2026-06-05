@@ -115,6 +115,9 @@ All text files (including handoff JSONs, logs, reports, etc.) **must** be writte
 
 **Recommendation for the Orchestrator:**
 At the beginning of every cycle, after running `Agent-Init.ps1`, ensure the current PowerShell session has UTF-8 defaults enabled.
+Agent-Init now also runs an automatic Russian-text roundtrip self-test (using the defaults + Set/Get-Content + .NET) and prints "UTF-8 self-test passed" or warning. This makes correct std encoding "forever" for all tasks (handoffs, .agent/*, logs, collector, wrapper output).
+
+Additionally, both the template and consuming projects (eeagent etc.) now ship `.gitattributes` that enforce `text=auto`, `*.ps1 eol=crlf`, data files `eol=lf`. This prevents mixed line endings from interacting badly with UTF-8 on Windows checkouts.
 
 ---
 

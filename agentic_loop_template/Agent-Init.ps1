@@ -27,14 +27,22 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
 # Force UTF-8 defaults for the entire session (critical for Russian Windows)
 # This prevents mojibake in handoff JSONs and other text files.
+# Wrapped in try/catch because some settings can fail in non-interactive sessions.
 try {
     $OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    $PSDefaultParameterValues['Out-File:Encoding']    = 'utf8'
-    $PSDefaultParameterValues['Set-Content:Encoding'] = 'utf8'
-    $PSDefaultParameterValues['Add-Content:Encoding'] = 'utf8'
-    $PSDefaultParameterValues['Get-Content:Encoding'] = 'utf8'
-    $env:PYTHONIOENCODING = 'utf-8'
-} catch {}
+
+    # Make all common file-writing cmdlets default to UTF-8 (without BOM where possible)
+    $PSDefaultParameterValues['Out-File:Encoding']       = 'utf8'
+    $PSDefaultParameterValues['Add-Content:Encoding']    = 'utf8'
+    $PSDefaultParameterValues['Set-Content:Encoding']    = 'utf8'
+    $PSDefaultParameterValues['Export-Csv:Encoding']     = 'utf8'
+    $PSDefaultParameterValues['Get-Content:Encoding']    = 'utf8'   # So bare Get-Content / cat works nicely on UTF-8 files
+
+    # Help Python-based tools the agent might call (blackbox_wrapper, memory collector, subprocesses etc.)
+    $env:PYTHONIOENCODING = "utf-8"
+} catch {
+    # Non-interactive / restricted environment — continue anyway
+}
 
 function Get-AutoTaskDescription {
     param([int]$MaxLength = 2800)
@@ -47,7 +55,9 @@ function Get-AutoTaskDescription {
     foreach ($file in $candidates) {
         if (Test-Path $file) {
             try {
-                $raw = Get-Content $file -Raw -ErrorAction Stop
+                # Use explicit UTF-8 via .NET to avoid Windows-1251 mojibake on Russian machines
+                # (Get-Content without -Encoding uses the system ANSI codepage, which is deadly for UTF-8 files)
+                $raw = [System.IO.File]::ReadAllText($file, [System.Text.Encoding]::UTF8)
                 if ($raw.Length -gt $MaxLength) {
                     $raw = $raw.Substring(0, $MaxLength) + "`n... (truncated)"
                 }
@@ -58,6 +68,26 @@ function Get-AutoTaskDescription {
     }
     return $null
 }
+
+# Self-test for encoding "forever" — run on every init for all tasks.
+# Verifies that Russian text roundtrips correctly through the defaults we just set.
+# If this fails, the session is broken for handoffs/JSON/logs and we surface it immediately.
+function Test-EncodingRoundtrip {
+    try {
+        $testFile = Join-Path $env:TEMP ("eeagent_encoding_test_" + (Get-Random) + ".txt")
+        $russianTest = "Привет мир! Тест UTF-8 для eeagent agentic loop: ёжик, テスト, café, 北京 — не должно быть кракозябр."
+        Set-Content -Path $testFile -Value $russianTest -Encoding utf8 -Force
+        $read = Get-Content -Path $testFile -Raw -Encoding utf8
+        Remove-Item -Path $testFile -Force -ErrorAction SilentlyContinue
+        if (($read.Trim()) -ne $russianTest) {
+            throw "Roundtrip content mismatch"
+        }
+        Write-Host "  UTF-8 self-test passed (Russian roundtrip OK via defaults)" -ForegroundColor Green
+    } catch {
+        Write-Warning "UTF-8 self-test FAILED: $($_.Exception.Message). Encoding will be unreliable for handoffs, .agent/ files, logs. Check session codepage and rerun init."
+    }
+}
+Test-EncodingRoundtrip
 
 function Generate-AgentStarterPrompt {
     param([string]$Task, [string]$SpecFile = "TASK_SPECIFICATION.md")

@@ -1,0 +1,30 @@
+# agentic_loop_template (source) — UTF-8 + line ending hygiene (critical for Russian Windows + agentic handoffs across all consuming projects)
+# See DEVELOPMENT_STANDARDS.md §6 (File Encoding).
+
+# All text: normalize to LF in repo.
+* text=auto
+
+# PS1 on Windows checkout get CRLF for usability.
+*.ps1 text eol=crlf
+
+# sh always LF.
+*.sh text eol=lf
+
+# Data/docs LF.
+*.json text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.txt text eol=lf
+
+*.png binary
+*.jpg binary
+*.exe binary
+*.dll binary
+*.pyc binary
+__pycache__/ binary
+
+*.ps1 linguist-language=PowerShell
+*.sh linguist-language=Shell
