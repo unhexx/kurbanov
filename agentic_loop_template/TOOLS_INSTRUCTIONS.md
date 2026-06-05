@@ -118,3 +118,110 @@ Write-Host "Check isolation level via policy or process"
 Add new blocks only after real run verification on Win10 + Arch. Update this file + TOOLS_REGISTRY if gh changes. Seed memory with new gotchas.
 
 **Current coverage target:** 15-20 blocks for Common + Windows (this initial draft). Linux + project-specific in next slice.
+
+## Linux (bash, for remote agents and sandboxes)
+
+## One-command install (uv tool + systemd, from install.sh)
+```bash
+set -euo pipefail
+# curl -fsSL <url>/install.sh | bash -s -- --central https://central.example.com --token xxxxx
+# or with --from 'git+https://...@main#subdirectory=agent' --non-interactive
+curl -fsSL https://raw.githubusercontent.com/unhexx/eegent/main/installers/linux/install.sh | bash -s -- --central "$CENTRAL" --token "$TOKEN"
+```
+**When to use:** Linux agent deploy. Architecture: uv tool for isolation, systemd user service, supports git-from for self-hosted no PyPI. Non-interactive for CI.
+
+## Systemd service management (Linux)
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now eeagent-agent
+systemctl --user status eeagent-agent --no-pager
+journalctl --user -u eeagent-agent -f
+```
+**When to use:** After install or restart. Architecture: user service by default, respects XDG_CONFIG_HOME.
+
+## Firecracker / persistent sandbox status (Linux isolation)
+```bash
+# Check guest status (from poc_firecracker)
+ls /var/lib/eeagent-sandbox/ || echo "no sandbox"
+# or via vsock connector test
+echo "ping" | socat - UNIX-CONNECT:/tmp/eeagent-guest.sock || echo "no guest"
+```
+**When to use:** Verify isolation for Linux remote agents. Architecture: persistent Firecracker + guest_command_server + policy.
+
+## uv tool run / exec (Linux python tools)
+```bash
+uv tool run eeagent-agent --mode ws
+# or for subtask
+uv tool run --from git+https://... eeagent-agent --help
+```
+**When to use:** Run without full install shim. Architecture: matches project uv stack, for blackbox_wrapper Linux paths.
+
+## Project-specific verified (eeagent self-dev tools)
+
+## Sync worktree (multi-repo, before any PLAN per §11)
+```powershell
+$ErrorActionPreference = 'Stop'
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-worktree.ps1 -VerifyOnly
+# or with main clone
+git -C 'C:\_PROJECT\eegent' powershell -ExecutionPolicy Bypass -File .\scripts\sync-worktree.ps1 -MainClonePath 'C:\_PROJECT\eegent'
+# Expect: SYNC_DONE: main=... verified=verify
+```
+**When to use:** Every cycle start/end. Architecture: keeps eeagent + kurbanov template in sync, emits machine-readable marker.
+
+## Agent-Init + self-test (always first)
+```powershell
+$ErrorActionPreference = 'Stop'
+powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1
+# Check output for: UTF-8 self-test passed (Russian roundtrip OK via defaults)
+# Then: . .\.venv\Scripts\Activate.ps1
+```
+**When to use:** Before any task. Architecture: enforces PS defaults, PYTHONIOENCODING, venv report, .gitattributes.
+
+## Blackbox wrapper call (autonomous subtask)
+```powershell
+$ErrorActionPreference = 'Stop'
+& ".\.venv\Scripts\python.exe" skills/blackbox_wrapper.py --subtask-id "P0-EXAMPLE" --autonomous --yolo
+# or simulate
+& ".\.venv\Scripts\python.exe" skills/blackbox_wrapper.py --subtask-id "P0-EXAMPLE" --simulate
+```
+**When to use:** For self-dev loops. Architecture: creates worktree, injects .agent/ state, parses structured, updates TODO/DECISIONS/LESSONS.
+
+## Memory snapshot / update (institutional memory)
+```powershell
+$ErrorActionPreference = 'Stop'
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory snapshot
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory query --top 5 --category 'Windows & PowerShell Gotchas'
+# Update (Reviewer):
+& '.\agentic_loop_template\memory\Invoke-AgenticMemory.ps1' update -Category 'Common Failure Patterns' -Description 'Always use exact gh_* before github ops'
+```
+**When to use:** Orchestrator start, Reviewer end. Architecture: workspace-scoped, dedup, compaction.
+
+## Gateway health / monitor (live control plane)
+```powershell
+$ErrorActionPreference = 'Stop'
+curl -f http://localhost:8000/health
+curl -s http://localhost:8000/agentic/monitor | ConvertFrom-Json | Select executors, tasks
+# WS test: use ws client or curl for /ws/ui but prefer in code
+```
+**When to use:** Verify live broadcasts, agents status. Architecture: central for WS /ws/ui agents:updated etc.
+
+## gh pre-calls (exact from TOOLS_REGISTRY, before any github remote)
+```powershell
+$ErrorActionPreference = 'Stop'
+gh auth status --hostname github.com 2>&1 | ConvertTo-Json -Depth 4 -Compress
+gh repo view --json name,owner,nameWithOwner,defaultBranchRef,description,url | ConvertTo-Json -Depth 4 -Compress
+$head = 'feature/your-feature'
+gh pr list --head $head --state all --json number,title,state,headRefName,baseRefName,url | ConvertTo-Json -Depth 6 -Compress
+```
+**When to use:** Before push, PR, merge on github (eeagent + kurbanov). Show full output. Architecture: §8 enforcement, never raw git on github remote.
+
+**Notes for M2.7 prompts (update):**
+- Always start prompt with: "Use only exact blocks from TOOLS_INSTRUCTIONS.md. Run after Agent-Init. Respect eeagent isolation + self-cycle §11 + multi-repo sync."
+- Linux blocks for bash/firecracker in remote agents.
+- Project blocks for loop self-dev (wrapper, sync, memory, gh).
+- After any block: update .agent/, sync-worktree -VerifyOnly, emit SYNC_DONE.
+- Verify: run block, capture, log.
+
+Add new only after verification on Win10 + Arch. This extends to ~30 blocks total. Seed memory with Linux gotchas too.
+
+**Coverage now:** Full Common + Windows + Linux + Project (initial for 002). Next: M2.7 opt + integration.
