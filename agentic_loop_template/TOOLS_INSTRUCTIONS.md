@@ -191,6 +191,44 @@ echo "ping" | socat - UNIX-CONNECT:/tmp/eeagent-guest.sock || echo "no guest"
 ```
 **When to use:** Verify isolation for Linux remote agents. Architecture: persistent Firecracker + guest_command_server + policy.
 
+## Verification section (smoke for rollout)
+
+### Smoke Win (after Init)
+```powershell
+$ErrorActionPreference = 'Stop'
+powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1
+# Verify UTF-8
+$test = "Привет мир! Тест UTF-8: ёжик, テスト, café"
+Set-Content -Path "test.txt" -Value $test -Encoding utf8
+$read = Get-Content -Path "test.txt" -Raw -Encoding utf8
+if ($read.Trim() -ne $test) { throw "UTF-8 fail" }
+Remove-Item "test.txt"
+# Git worktree smoke
+git worktree add -b test-wt ".\.agent\worktrees\test-wt"
+git worktree remove ".\.agent\worktrees\test-wt" --force
+git branch -D test-wt
+# Venv python
+& ".\.venv\Scripts\python.exe" -c "print('venv ok')"
+Write-Host "Win smoke OK"
+```
+
+### Smoke Linux (bash)
+```bash
+set -euo pipefail
+# uv tool smoke (assume installed)
+uv tool run --from git+https://github.com/unhexx/eegent.git eeagent-agent --help || echo "tool smoke"
+# systemd check
+systemctl --user status eeagent-agent --no-pager || true
+journalctl --user -u eeagent-agent --lines 5 || true
+echo "Linux smoke OK"
+```
+
+**When to use:** After changes to TOOLS, run on clean Win10/Arch VM. Architecture: ensures blocks work in real install/isolation. Add to CI later.
+
+**Notes for M2.7:** Always verify smoke before using in autonomous subtask. Update this section with new verified blocks only after run on clean VMs. Seed memory with "Win/Linux tool gotchas" from failures.
+
+Add new only after real verification. This completes rollout prep.
+
 ## uv tool run / exec (Linux python tools)
 ```bash
 uv tool run eeagent-agent --mode ws
