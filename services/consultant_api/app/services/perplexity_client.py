@@ -43,7 +43,7 @@ CONSULTANT_SYSTEM_PROMPT = (
     "из базы знаний. При отсутствии источника, противоречии источников или низкой "
     "уверенности — передача менеджеру.\n\n"
     "Бюджет ниже 1 500 000 ₽ — передача менеджеру: самостоятельный подбор в целевом "
-    "контуре не обещайте. Конкретные объявления и ссылки на площадки не комментируйте — "
+    "��онтуре не обещайте. Конкретные объявления и ссылки на площадки не комментируйте — "
     "это делает менеджер.\n\n"
     "Прямые просьбы клиента «позовите менеджера», «оператора», «человека», «специалиста», "
     "«соедините» — передача менеджеру без обсуждения.\n\n"
@@ -225,24 +225,63 @@ class PerplexityClient:
         if isinstance(data.get("citations"), list):
             citations = [str(x) for x in data["citations"] if isinstance(x, (str, int))]
 
-        parsed = _extract_json_object(content or "")
+        # Проверка на пустой или пробельный контент — эскалация.
+        raw_content = (content or "").strip()
+        if not raw_content:
+            logger.warning("perplexity_client: empty content")
+            return ConsultantResult(
+                action="escalate",
+                reason="empty_content",
+                raw=data,
+            )
+
+        parsed = _extract_json_object(raw_content)
         if not parsed:
             logger.warning("perplexity_client: cannot parse JSON action from content")
             return ConsultantResult(
                 action="escalate",
                 reason="invalid_json",
-                text=(content or "").strip(),
+                text=raw_content[:500],
                 raw=data,
             )
 
+# Извлекли JSON — проверим на short content без явного action.
         action = str(parsed.get("action") or "").strip().lower()
+        if not action:
+            # Нет action — проверяем, не слишком ли короткий ответ.
+            text_val = str(parsed.get("text") or "").strip()
+            if len(text_val) < 20:
+                logger.warning(
+                    "perplexity_client: short answer without action, likely low confidence"
+                )
+                return ConsultantResult(
+                    action="escalate",
+                    reason="low_confidence",
+                    text=text_val,
+                    raw=data,
+                )
+            # otherwise, treat as respond (минимальный fallback)
+            action = "respond"
+
         if action not in {"respond", "escalate"}:
             return ConsultantResult(
                 action="escalate",
                 reason="invalid_action",
-                text=str(parsed.get("text") or "").strip(),
+                text=str(parsed.get("text") or "").strip()[:500],
                 raw=data,
             )
+
+        # При action=respond обязательно наличие text.
+        if action == "respond":
+            text_val = str(parsed.get("text") or "").strip()
+            if not text_val:
+                logger.warning("perplexity_client: respond without text")
+                return ConsultantResult(
+                    action="escalate",
+                    reason="invalid_action",
+                    text="",
+                    raw=data,
+                )
 
         return ConsultantResult(
             action=action,
