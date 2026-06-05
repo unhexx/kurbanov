@@ -86,6 +86,7 @@ We are building **eeagent** — a vendor-independent self-hosted MCP gateway for
 1. Bring reliable command delivery to production-ready (DB queue, clear retry policy, edge case handling).
 2. Lay the foundation for Web Control Plane (Bytebot-style UX).
 3. Start implementing GUI tools for the local agent.
+4. Fully integrate TOOLS_INSTRUCTIONS.md into all prompts, roles, and executor logic for reliable Win/Linux dev ops (use only verified blocks, add examples).
 
 Do not start large frontend work until command delivery is truly reliable.
 
