@@ -119,6 +119,49 @@ Add new blocks only after real run verification on Win10 + Arch. Update this fil
 
 **Current coverage target:** 15-20 blocks for Common + Windows (this initial draft). Linux + project-specific in next slice.
 
+**M2.7 few-shot examples (copy these patterns into prompts for reliable tool use):**
+
+Example 1 (Win encoding):
+User: "Create a script that writes Russian text safely on Win."
+Assistant: "Use this exact block from TOOLS_INSTRUCTIONS.md:
+```powershell
+$ErrorActionPreference = 'Stop'
+$testFile = Join-Path $env:TEMP (\"test_utf8_\" + (Get-Random) + \".txt\")
+$russian = \"Привет мир! Тест UTF-8: ёжик, テスト, café\"
+Set-Content -Path $testFile -Value $russian -Encoding utf8 -Force
+$read = Get-Content -Path $testFile -Raw -Encoding utf8
+Remove-Item $testFile -Force
+if ($read.Trim() -ne $russian) { throw \"UTF-8 roundtrip failed\" }
+```
+Always after Agent-Init. Architecture: eeagent requires UTF-8 for .agent/ and handoffs."
+
+Example 2 (Linux install + systemd):
+User: "Deploy agent on Linux cleanly."
+Assistant: "Use:
+```bash
+set -euo pipefail
+curl -fsSL https://raw.githubusercontent.com/unhexx/eegent/main/installers/linux/install.sh | bash -s -- --central \"$CENTRAL\" --token \"$TOKEN\"
+systemctl --user daemon-reload
+systemctl --user enable --now eeagent-agent
+```
+Non-interactive for automation. Architecture: uv tool + systemd for self-hosted remote agents."
+
+Example 3 (project sync before planning):
+User: "Start new cycle."
+Assistant: "First:
+```powershell
+$ErrorActionPreference = 'Stop'
+powershell -ExecutionPolicy Bypass -File .\\scripts\\sync-worktree.ps1 -VerifyOnly
+# Expect SYNC_DONE
+```
+Per §11. Then proceed. Architecture: keeps eeagent + template in sync across clones."
+
+**Linux/Windows gotchas (seed to memory):**
+- Win: Always Init first or CP1251 mojibake in Russian strings/logs.
+- Linux: Use uv tool for isolation; prefer user systemd; check PATH for ~/.local/bin after uv tool.
+- Multi-repo: Never raw git on github; gh_* exact + sync-worktree always.
+- Isolation: Commands must respect sandbox_requirements when via MCP.
+
 ## Linux (bash, for remote agents and sandboxes)
 
 ## One-command install (uv tool + systemd, from install.sh)
